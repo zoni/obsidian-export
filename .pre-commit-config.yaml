@@ -1,0 +1,14 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 9136088a246768144165fcc3ecc3d31bb686920a # frozen: v3.3.0
+    hooks:
+      - id: check-yaml
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: eeee35a89e69d5772bdee97db1a6a898467b686e # frozen: v1.0
+    hooks:
+      - id: fmt
+      - id: cargo-check
+      - id: clippy
+        args: ["--", "-D", "warnings"]

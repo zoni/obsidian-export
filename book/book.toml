@@ -1,0 +1,6 @@
+[book]
+authors = ["Nick Groenen"]
+language = "en"
+multilingual = false
+src = "book-src"
+title = "Obsidian Export"

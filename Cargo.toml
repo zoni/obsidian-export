@@ -1,0 +1,43 @@
+[package]
+name = "obsidian-export"
+version = "0.1.0"
+authors = ["Nick Groenen <nick@groenen.me>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/zoni/obsidian-export"
+documentation = "https://docs.rs/obsidian-export"
+description = """
+Rust library and associated CLI program to export an Obsidian vault to regular Markdown.
+"""
+categories = ["command-line-utilities", "text-processing"]
+keywords = ["markdown", "obsidian"]
+
+[lib]
+name = "obsidian_export"
+path = "src/lib.rs"
+
+[[bin]]
+name = "obsidian-export"
+path = "src/main.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+eyre = "0.6.3"
+gumdrop = "0.8.0"
+ignore = "0.4.17"
+lazy_static = "1.4.0"
+matter = "0.1.0-alpha4"
+pathdiff = "0.2.0"
+percent-encoding = "2.1.0"
+pulldown-cmark = "0.8.0"
+pulldown-cmark-to-cmark = "6.0.0"
+rayon = "1.5.0"
+regex = "1.4.2"
+snafu = "0.6.10"
+
+[dev-dependencies]
+pretty_assertions = "0.6.1"
+tempfile = "3.1.0"
+walkdir = "2.3.1"

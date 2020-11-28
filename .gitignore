@@ -1,0 +1,9 @@
+/target
+
+# Generated mdBook HTML
+/book/book
+
+/book/obsidian-src/.obsidian/workspace
+
+# Tarpaulin (https://github.com/xd009642/tarpaulin) HTML coverage report
+tarpaulin-report.html

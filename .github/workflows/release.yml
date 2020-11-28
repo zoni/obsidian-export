@@ -1,0 +1,125 @@
+on:
+  push:
+    tags:
+      - "v*"
+
+name: Create release
+
+jobs:
+  create-release:
+    name: Create release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: "${{ steps.create_release.outputs.upload_url }}"
+    steps:
+      - id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: true
+          prerelease: false
+
+  build-linux:
+    name: Linux binary
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --locked
+
+      - run: strip target/release/obsidian-export
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Linux binary
+          path: target/release/obsidian-export
+          retention-days: 7
+
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: target/release/obsidian-export
+          asset_name: obsidian-export_Linux-x86_64
+          asset_content_type: application/octet-stream
+
+  build-windows:
+    name: Windows binary
+    needs: create-release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --locked
+
+      - run: strip target/release/obsidian-export.exe
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Windows binary
+          path: target/release/obsidian-export.exe
+          retention-days: 7
+
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: target/release/obsidian-export.exe
+          asset_name: obsidian-export_Windows-x64_64
+          asset_content_type: application/octet-stream
+
+  build-macos:
+    name: Mac OS binary
+    needs: create-release
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --locked
+
+      - run: strip target/release/obsidian-export
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: MacOS binary
+          path: target/release/obsidian-export
+          retention-days: 7
+
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: target/release/obsidian-export
+          asset_name: obsidian-export_MacOS-x86_64
+          asset_content_type: application/octet-stream
