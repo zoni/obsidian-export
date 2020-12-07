@@ -1,1 +1,1 @@
-This notes links to [[Note with 'quotes']]
+This notes links to [[Nöte with 'quotes']]

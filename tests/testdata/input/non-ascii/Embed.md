@@ -1,3 +1,3 @@
-This note embeds [[Note with 'quotes']]:
+This note embeds [[Nöte with 'quotes']]:
 
-![[Note with 'quotes']]
+![[Nöte with 'quotes']]
