@@ -26,7 +26,7 @@ These may be downloaded from: [https://github.com/zoni/obsidian-export/releases]
 Alternatively, *obsidian-export* may be compiled from source using [Cargo](https://doc.rust-lang.org/cargo/), the official package manager for Rust, by using the following steps:
 
 1. Install the Rust toolchain: [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install)
-1. Run: `cargo install https://github.com/zoni/obsidian-export.git --locked`
+1. Run: `cargo install obsidian-export`
 
 The same `cargo install` command can later be used to upgrade to a newer release as well.
 
