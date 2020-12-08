@@ -12,3 +12,10 @@ repos:
       - id: cargo-check
       - id: clippy
         args: ["--", "-D", "warnings"]
+  - repo: local
+    hooks:
+      - id: mdbook
+        name: mdbook
+        entry: book/generate.sh
+        language: script
+        files: ^book/.*
