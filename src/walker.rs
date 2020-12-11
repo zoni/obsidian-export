@@ -7,9 +7,9 @@ type Result<T, E = ExportError> = std::result::Result<T, E>;
 
 #[derive(Debug, Clone, Copy)]
 pub struct WalkOptions<'a> {
-    ignore_filename: &'a str,
-    ignore_hidden: bool,
-    honor_gitignore: bool,
+    pub ignore_filename: &'a str,
+    pub ignore_hidden: bool,
+    pub honor_gitignore: bool,
 }
 
 impl<'a> WalkOptions<'a> {

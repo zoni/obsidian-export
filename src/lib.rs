@@ -3,6 +3,8 @@ extern crate lazy_static;
 
 mod walker;
 
+pub use walker::{vault_contents, WalkOptions};
+
 use pathdiff::diff_paths;
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use pulldown_cmark::{CodeBlockKind, CowStr, Event, Options, Parser, Tag};
@@ -16,7 +18,6 @@ use std::io::prelude::*;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::str;
-use walker::{vault_contents, WalkOptions};
 
 type Result<T, E = ExportError> = std::result::Result<T, E>;
 type MarkdownTree<'a> = Vec<Event<'a>>;
