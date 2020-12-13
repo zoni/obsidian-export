@@ -1,15 +1,28 @@
 use crate::{ExportError, WalkDirError};
-use ignore::{Walk, WalkBuilder};
+use ignore::{DirEntry, Walk, WalkBuilder};
 use snafu::ResultExt;
+use std::fmt;
 use std::path::{Path, PathBuf};
 
 type Result<T, E = ExportError> = std::result::Result<T, E>;
+type FilterFn = dyn Fn(&DirEntry) -> bool + Send + Sync + 'static;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone)]
 pub struct WalkOptions<'a> {
     pub ignore_filename: &'a str,
     pub ignore_hidden: bool,
     pub honor_gitignore: bool,
+    pub filter_fn: Option<Box<&'static FilterFn>>,
+}
+
+impl<'a> fmt::Debug for WalkOptions<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("WalkOptions")
+            .field("ignore_filename", &self.ignore_filename)
+            .field("ignore_hidden", &self.ignore_hidden)
+            .field("honor_gitignore", &self.honor_gitignore)
+            .finish()
+    }
 }
 
 impl<'a> WalkOptions<'a> {
@@ -18,11 +31,13 @@ impl<'a> WalkOptions<'a> {
             ignore_filename: ".export-ignore",
             ignore_hidden: true,
             honor_gitignore: true,
+            filter_fn: None,
         }
     }
 
     fn build_walker(self, path: &Path) -> Walk {
-        WalkBuilder::new(path)
+        let mut walker = WalkBuilder::new(path);
+        walker
             .standard_filters(false)
             .parents(true)
             .hidden(self.ignore_hidden)
@@ -30,8 +45,12 @@ impl<'a> WalkOptions<'a> {
             .require_git(true)
             .git_ignore(self.honor_gitignore)
             .git_global(self.honor_gitignore)
-            .git_exclude(self.honor_gitignore)
-            .build()
+            .git_exclude(self.honor_gitignore);
+
+        if let Some(filter) = self.filter_fn {
+            walker.filter_entry(filter);
+        }
+        walker.build()
     }
 }
 

@@ -180,7 +180,7 @@ impl<'a> Exporter<'a> {
             });
         }
 
-        let vault = vault_contents(self.root.as_path(), self.walk_options)?;
+        let vault = vault_contents(self.root.as_path(), self.walk_options.clone())?;
         vault.clone().into_par_iter().try_for_each(|file| {
             let relative_path = file
                 .strip_prefix(&self.root.clone())
