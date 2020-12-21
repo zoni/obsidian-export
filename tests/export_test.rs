@@ -266,7 +266,7 @@ fn test_infinite_recursion() {
 
     match err {
         ExportError::FileExportError { path: _, source } => match *source {
-            ExportError::RecursionLimitExceeded {} => {}
+            ExportError::RecursionLimitExceeded { .. } => {}
             _ => panic!("Wrong error variant for source, got: {:?}", source),
         },
         err => panic!("Wrong error variant: {:?}", err),

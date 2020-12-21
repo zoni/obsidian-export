@@ -1,6 +1,6 @@
 use eyre::{eyre, Result};
 use gumdrop::Options;
-use obsidian_export::{Exporter, FrontmatterStrategy};
+use obsidian_export::{ExportError, Exporter, FrontmatterStrategy};
 use std::path::PathBuf;
 
 #[derive(Debug, Options)]
@@ -42,7 +42,35 @@ fn main() -> Result<()> {
     exporter.frontmatter_strategy(args.frontmatter_strategy);
     // TODO: Pass in configurable walk_options here: exporter.walk_options(..);
     // TODO: This should allow settings for ignore_hidden and honor_gitignore.
-    exporter.run()?;
+
+    if let Err(err) = exporter.run() {
+        match err {
+            ExportError::FileExportError {
+                ref path,
+                ref source,
+            } => match &**source {
+                // An arguably better way of enhancing error reports would be to construct a custom
+                // `eyre::EyreHandler`, but that would require a fair amount of boilerplate and
+                // reimplementation of basic reporting.
+                ExportError::RecursionLimitExceeded { file_tree } => {
+                    eprintln!(
+                        "Error: {:?}",
+                        eyre!(
+                            "'{}' exceeds the maximum nesting limit of embeds",
+                            path.display()
+                        )
+                    );
+                    eprintln!("\nFile tree:");
+                    for (idx, path) in file_tree.iter().enumerate() {
+                        eprintln!("{}-> {}", "  ".repeat(idx), path.display());
+                    }
+                }
+                _ => eprintln!("Error: {:?}", eyre!(err)),
+            },
+            _ => eprintln!("Error: {:?}", eyre!(err)),
+        };
+        std::process::exit(1);
+    };
 
     Ok(())
 }

@@ -8,7 +8,7 @@ pub use walker::{vault_contents, WalkOptions};
 use pathdiff::diff_paths;
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use pulldown_cmark::{CodeBlockKind, CowStr, Event, Options, Parser, Tag};
-use pulldown_cmark_to_cmark::{self, cmark_with_options};
+use pulldown_cmark_to_cmark::cmark_with_options;
 use rayon::prelude::*;
 use regex::Regex;
 use snafu::{ResultExt, Snafu};
@@ -27,7 +27,7 @@ lazy_static! {
         Regex::new(r"^(?P<file>[^#|]+)(#(?P<block>.+?))??(\|(?P<label>.+?))??$").unwrap();
 }
 const PERCENTENCODE_CHARS: &AsciiSet = &CONTROLS.add(b' ').add(b'(').add(b')').add(b'%');
-const NOTE_RECURSION_LIMIT: u32 = 10;
+const NOTE_RECURSION_LIMIT: usize = 10;
 
 #[non_exhaustive]
 #[derive(Debug, Snafu)]
@@ -57,7 +57,7 @@ pub enum ExportError {
     CharacterEncodingError { source: str::Utf8Error },
 
     #[snafu(display("Recursion limit exceeded"))]
-    RecursionLimitExceeded {},
+    RecursionLimitExceeded { file_tree: Vec<PathBuf> },
 
     #[snafu(display("Failed to export '{}'", path.display()))]
     FileExportError {
@@ -90,35 +90,52 @@ pub struct Exporter<'a> {
 #[derive(Debug, Clone)]
 /// Context holds parser metadata for the file/note currently being parsed.
 struct Context<'a> {
-    file: PathBuf,
+    file_tree: Vec<PathBuf>,
     vault_contents: &'a [PathBuf],
     frontmatter_strategy: FrontmatterStrategy,
-    note_depth: u32,
 }
 
 impl<'a> Context<'a> {
+    /// Create a new `Context`
     fn new(file: PathBuf, vault_contents: &'a [PathBuf]) -> Context<'a> {
         Context {
-            file,
+            file_tree: vec![file.clone()],
             vault_contents,
             frontmatter_strategy: FrontmatterStrategy::Auto,
-            note_depth: 1,
         }
     }
 
-    fn frontmatter_strategy(&mut self, strategy: FrontmatterStrategy) -> &mut Context<'a> {
+    /// Create a new `Context` which inherits from a parent Context.
+    fn from_parent(context: &Context<'a>, child: &PathBuf) -> Context<'a> {
+        let mut context = context.clone();
+        context.file_tree.push(child.to_path_buf());
+        context
+    }
+
+    /// Associate a new `FrontmatterStrategy` with this context.
+    fn set_frontmatter_strategy(&mut self, strategy: FrontmatterStrategy) -> &mut Context<'a> {
         self.frontmatter_strategy = strategy;
         self
     }
 
-    fn file(&mut self, file: PathBuf) -> &mut Context<'a> {
-        self.file = file;
-        self
+    /// Return the path of the file currently being parsed.
+    fn current_file(&self) -> &PathBuf {
+        self.file_tree
+            .last()
+            .expect("Context not initialized properly, file_tree is empty")
     }
 
-    fn increment_depth(&mut self) -> &mut Context<'a> {
-        self.note_depth += 1;
-        self
+    /// Return the note depth (nesting level) for this context.
+    fn note_depth(&self) -> usize {
+        self.file_tree.len()
+    }
+
+    /// Return the list of files associated with this context.
+    ///
+    /// The first element corresponds to the root file, the final element corresponds to the file
+    /// which is currently being processed (see also `current_file`).
+    fn file_tree(&self) -> Vec<PathBuf> {
+        self.file_tree.clone()
     }
 }
 
@@ -232,7 +249,7 @@ fn parse_and_export_obsidian_note(
     }
 
     let mut context = Context::new(src.to_path_buf(), vault_contents);
-    context.frontmatter_strategy(frontmatter_strategy);
+    context.set_frontmatter_strategy(frontmatter_strategy);
     let markdown_tree = parse_obsidian_note(&src, &context)?;
     outfile
         .write_all(render_mdtree_to_mdtext(markdown_tree).as_bytes())
@@ -241,9 +258,10 @@ fn parse_and_export_obsidian_note(
 }
 
 fn parse_obsidian_note<'a>(path: &Path, context: &Context) -> Result<MarkdownTree<'a>> {
-    if context.note_depth > NOTE_RECURSION_LIMIT {
-        // TODO: Include parent so the source note can be traced back.
-        return Err(ExportError::RecursionLimitExceeded {});
+    if context.note_depth() > NOTE_RECURSION_LIMIT {
+        return Err(ExportError::RecursionLimitExceeded {
+            file_tree: context.file_tree(),
+        });
     }
     let content = fs::read_to_string(&path).context(ReadError { path })?;
     let (_frontmatter, content) =
@@ -333,9 +351,7 @@ fn embed_file<'a, 'b>(note_name: &'a str, context: &'b Context) -> Result<Markdo
 
     let tree = match lookup_filename_in_vault(note_name, context.vault_contents) {
         Some(path) => {
-            let mut context = context.clone();
-            context.file(path.to_path_buf()).increment_depth();
-
+            let context = Context::from_parent(context, path);
             let no_ext = OsString::new();
             match path.extension().unwrap_or(&no_ext).to_str() {
                 Some("md") => parse_obsidian_note(&path, &context)?,
@@ -373,7 +389,7 @@ fn embed_file<'a, 'b>(note_name: &'a str, context: &'b Context) -> Result<Markdo
             println!(
                 "Warning: Unable to find embedded note\n\tReference: '{}'\n\tSource: '{}'",
                 note_name,
-                context.file.display(),
+                context.current_file().display(),
             );
             vec![]
         }
@@ -400,7 +416,7 @@ fn make_link_to_file<'a>(file: &'a str, label: &'a str, context: &Context) -> Ma
         println!(
             "Warning: Unable to find referenced note\n\tReference: '{}'\n\tSource: '{}'",
             file,
-            context.file.display(),
+            context.current_file().display(),
         );
         return vec![
             Event::Start(Tag::Emphasis),
@@ -412,7 +428,7 @@ fn make_link_to_file<'a>(file: &'a str, label: &'a str, context: &Context) -> Ma
     let rel_link = diff_paths(
         target_file,
         &context
-            .file
+            .current_file()
             .parent()
             .expect("obsidian content files should always have a parent"),
     )
