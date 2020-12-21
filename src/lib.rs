@@ -387,7 +387,7 @@ fn embed_file<'a, 'b>(note_name: &'a str, context: &'b Context) -> Result<Markdo
         None => {
             // TODO: Extract into configurable function.
             println!(
-                "Warning: Unable to find embedded note\n\tReference: '{}'\n\tSource: '{}'",
+                "Warning: Unable to find embedded note\n\tReference: '{}'\n\tSource: '{}'\n",
                 note_name,
                 context.current_file().display(),
             );
@@ -414,7 +414,7 @@ fn make_link_to_file<'a>(file: &'a str, label: &'a str, context: &Context) -> Ma
     if target_file.is_none() {
         // TODO: Extract into configurable function.
         println!(
-            "Warning: Unable to find referenced note\n\tReference: '{}'\n\tSource: '{}'",
+            "Warning: Unable to find referenced note\n\tReference: '{}'\n\tSource: '{}'\n",
             file,
             context.current_file().display(),
         );
