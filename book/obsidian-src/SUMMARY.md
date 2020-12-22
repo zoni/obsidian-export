@@ -3,4 +3,8 @@
 - [[index|Introduction]]
 - [[Installation]]
 - [[Usage]]
-- [[License]]
+
+---
+
+[[CHANGES|Changelog]]
+[[License]]
