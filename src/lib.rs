@@ -124,6 +124,16 @@ impl Context {
             .expect("Context not initialized properly, file_tree is empty")
     }
 
+    /// Return the path of the root file.
+    ///
+    /// Typically this will yield the same element as `current_file`, but when a note is embedded
+    /// within another note, this will return the outer-most note.
+    fn root_file(&self) -> &PathBuf {
+        self.file_tree
+            .first()
+            .expect("Context not initialized properly, file_tree is empty")
+    }
+
     /// Return the note depth (nesting level) for this context.
     fn note_depth(&self) -> usize {
         self.file_tree.len()
@@ -440,10 +450,13 @@ impl<'a> Exporter<'a> {
             ];
         }
         let target_file = target_file.unwrap();
+        // We use root_file() rather than current_file() here to make sure links are always
+        // relative to the outer-most note, which is the note which this content is inserted into
+        // in case of embedded notes.
         let rel_link = diff_paths(
             target_file,
             &context
-                .current_file()
+                .root_file()
                 .parent()
                 .expect("obsidian content files should always have a parent"),
         )
