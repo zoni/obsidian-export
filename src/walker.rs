@@ -8,10 +8,26 @@ type Result<T, E = ExportError> = std::result::Result<T, E>;
 type FilterFn = dyn Fn(&DirEntry) -> bool + Send + Sync + 'static;
 
 #[derive(Clone)]
+/// WalkOptions specifies how an Obsidian vault directory is scanned for eligible files to export.
 pub struct WalkOptions<'a> {
+    /// The filename for ignore files, following the
+    /// [gitignore](https://git-scm.com/docs/gitignore) syntax.
+    ///
+    /// By default `.export-ignore` is used.
     pub ignore_filename: &'a str,
+    /// Whether to ignore hidden files.
+    ///
+    /// This is enabled by default.
     pub ignore_hidden: bool,
+    /// Whether to honor git's ignore rules (`.gitignore` files, `.git/config/exclude`, etc) if
+    /// the target is within a git repository.
+    ///
+    /// This is enabled by default.
     pub honor_gitignore: bool,
+    /// An optional custom filter function which is called for each directory entry to determine if
+    /// it should be included or not.
+    ///
+    /// This is passed to [`ignore::WalkBuilder::filter_entry`].
     pub filter_fn: Option<Box<&'static FilterFn>>,
 }
 
@@ -26,6 +42,7 @@ impl<'a> fmt::Debug for WalkOptions<'a> {
 }
 
 impl<'a> WalkOptions<'a> {
+    /// Create a new set of options using default values.
     pub fn new() -> WalkOptions<'a> {
         WalkOptions {
             ignore_filename: ".export-ignore",
@@ -60,6 +77,8 @@ impl<'a> Default for WalkOptions<'a> {
     }
 }
 
+/// `vault_contents` returns all of the files in an Obsidian vault located at `path` which would be
+/// exported when using the given [WalkOptions].
 pub fn vault_contents(path: &Path, opts: WalkOptions) -> Result<Vec<PathBuf>> {
     let mut contents = Vec::new();
     let walker = opts.build_walker(path);

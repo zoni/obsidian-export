@@ -31,35 +31,48 @@ const NOTE_RECURSION_LIMIT: usize = 10;
 
 #[non_exhaustive]
 #[derive(Debug, Snafu)]
+/// ExportError represents all errors which may be returned when using this crate.
 pub enum ExportError {
     #[snafu(display("failed to read from '{}'", path.display()))]
+    /// This occurs when a read IO operation fails.
     ReadError {
         path: PathBuf,
         source: std::io::Error,
     },
 
     #[snafu(display("failed to write to '{}'", path.display()))]
+    /// This occurs when a write IO operation fails.
     WriteError {
         path: PathBuf,
         source: std::io::Error,
     },
 
     #[snafu(display("Encountered an error while trying to walk '{}'", path.display()))]
+    /// This occurs when an error is encountered while trying to walk a directory.
     WalkDirError {
         path: PathBuf,
         source: ignore::Error,
     },
 
     #[snafu(display("No such file or directory: {}", path.display()))]
+    /// This occurs when an operation is requested on a file or directory which does not exist.
     PathDoesNotExist { path: PathBuf },
 
     #[snafu(display("Invalid character encoding encountered"))]
+    /// This error may occur when invalid UTF8 is encountered.
+    ///
+    /// Currently, operations which assume UTF8 perform lossy encoding however.
     CharacterEncodingError { source: str::Utf8Error },
 
     #[snafu(display("Recursion limit exceeded"))]
+    /// This error occurs when embedded notes are too deeply nested or cause an infinite loop.
+    ///
+    /// When this happens, `file_tree` contains a list of all the files which were processed
+    /// leading up to this error.
     RecursionLimitExceeded { file_tree: Vec<PathBuf> },
 
     #[snafu(display("Failed to export '{}'", path.display()))]
+    /// This occurs when a file fails to export successfully.
     FileExportError {
         path: PathBuf,
         #[snafu(source(from(ExportError, Box::new)))]
@@ -80,6 +93,12 @@ pub enum FrontmatterStrategy {
 }
 
 #[derive(Debug, Clone)]
+/// Exporter provides the main interface to this library.
+///
+/// Users are expected to create an Exporter using [`Exporter::new`], optionally followed by
+/// customization using [`Exporter::frontmatter_strategy`] and [`Exporter::walk_options`].
+///
+/// After that, calling [`Exporter::run`] will start the export process.
 pub struct Exporter<'a> {
     root: PathBuf,
     destination: PathBuf,
@@ -149,6 +168,8 @@ impl Context {
 }
 
 impl<'a> Exporter<'a> {
+    /// Create a new exporter which reads notes from `source` and exports these to
+    /// `destination`.
     pub fn new(source: PathBuf, destination: PathBuf) -> Exporter<'a> {
         Exporter {
             root: source,
@@ -159,16 +180,19 @@ impl<'a> Exporter<'a> {
         }
     }
 
+    /// Set the [`WalkOptions`] to be used for this exporter.
     pub fn walk_options(&mut self, options: WalkOptions<'a>) -> &mut Exporter<'a> {
         self.walk_options = options;
         self
     }
 
+    /// Set the [`FrontmatterStrategy`] to be used for this exporter.
     pub fn frontmatter_strategy(&mut self, strategy: FrontmatterStrategy) -> &mut Exporter<'a> {
         self.frontmatter_strategy = strategy;
         self
     }
 
+    /// Export notes using the settings configured on this exporter.
     pub fn run(&mut self) -> Result<()> {
         if !self.root.exists() {
             return Err(ExportError::PathDoesNotExist {
