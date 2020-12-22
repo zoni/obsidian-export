@@ -84,36 +84,35 @@ pub struct Exporter<'a> {
     root: PathBuf,
     destination: PathBuf,
     frontmatter_strategy: FrontmatterStrategy,
+    vault_contents: Option<Vec<PathBuf>>,
     walk_options: WalkOptions<'a>,
 }
 
 #[derive(Debug, Clone)]
 /// Context holds parser metadata for the file/note currently being parsed.
-struct Context<'a> {
+struct Context {
     file_tree: Vec<PathBuf>,
-    vault_contents: &'a [PathBuf],
     frontmatter_strategy: FrontmatterStrategy,
 }
 
-impl<'a> Context<'a> {
+impl Context {
     /// Create a new `Context`
-    fn new(file: PathBuf, vault_contents: &'a [PathBuf]) -> Context<'a> {
+    fn new(file: PathBuf) -> Context {
         Context {
             file_tree: vec![file.clone()],
-            vault_contents,
             frontmatter_strategy: FrontmatterStrategy::Auto,
         }
     }
 
     /// Create a new `Context` which inherits from a parent Context.
-    fn from_parent(context: &Context<'a>, child: &PathBuf) -> Context<'a> {
+    fn from_parent(context: &Context, child: &PathBuf) -> Context {
         let mut context = context.clone();
         context.file_tree.push(child.to_path_buf());
         context
     }
 
     /// Associate a new `FrontmatterStrategy` with this context.
-    fn set_frontmatter_strategy(&mut self, strategy: FrontmatterStrategy) -> &mut Context<'a> {
+    fn set_frontmatter_strategy(&mut self, strategy: FrontmatterStrategy) -> &mut Context {
         self.frontmatter_strategy = strategy;
         self
     }
@@ -146,6 +145,7 @@ impl<'a> Exporter<'a> {
             destination,
             frontmatter_strategy: FrontmatterStrategy::Auto,
             walk_options: WalkOptions::default(),
+            vault_contents: None,
         }
     }
 
@@ -159,15 +159,18 @@ impl<'a> Exporter<'a> {
         self
     }
 
-    pub fn run(self) -> Result<()> {
+    pub fn run(&mut self) -> Result<()> {
         if !self.root.exists() {
-            return Err(ExportError::PathDoesNotExist { path: self.root });
+            return Err(ExportError::PathDoesNotExist {
+                path: self.root.clone(),
+            });
         }
 
         // When a single file is specified, we can short-circuit contruction of walk and associated
         // directory traversal. This also allows us to accept destination as either a file or a
         // directory name.
         if self.root.is_file() {
+            self.vault_contents = Some(vec![self.root.clone()]);
             let source_filename = self
                 .root
                 .file_name()
@@ -188,265 +191,278 @@ impl<'a> Exporter<'a> {
                     self.destination.clone()
                 }
             };
-            return Ok(self.export_note(&self.root, &destination, &[self.root.clone()])?);
+            return Ok(self.export_note(&self.root, &destination)?);
         }
 
         if !self.destination.exists() {
             return Err(ExportError::PathDoesNotExist {
-                path: self.destination,
+                path: self.destination.clone(),
             });
         }
 
-        let vault = vault_contents(self.root.as_path(), self.walk_options.clone())?;
-        vault.clone().into_par_iter().try_for_each(|file| {
-            let relative_path = file
-                .strip_prefix(&self.root.clone())
-                .expect("file should always be nested under root")
-                .to_path_buf();
-            let destination = &self.destination.join(&relative_path);
-            self.export_note(&file, destination, &vault)
-        })?;
+        self.vault_contents = Some(vault_contents(
+            self.root.as_path(),
+            self.walk_options.clone(),
+        )?);
+        self.vault_contents
+            .as_ref()
+            .unwrap()
+            .clone()
+            .into_par_iter()
+            .try_for_each(|file| {
+                let relative_path = file
+                    .strip_prefix(&self.root.clone())
+                    .expect("file should always be nested under root")
+                    .to_path_buf();
+                let destination = &self.destination.join(&relative_path);
+                self.export_note(&file, destination)
+            })?;
         Ok(())
     }
 
-    fn export_note(&self, src: &Path, dest: &Path, vault_contents: &[PathBuf]) -> Result<()> {
+    fn export_note(&self, src: &Path, dest: &Path) -> Result<()> {
         match is_markdown_file(src) {
-            true => {
-                parse_and_export_obsidian_note(src, dest, vault_contents, self.frontmatter_strategy)
-            }
+            true => self.parse_and_export_obsidian_note(src, dest, self.frontmatter_strategy),
             false => copy_file(src, dest),
         }
         .context(FileExportError { path: src })
     }
-}
 
-fn parse_and_export_obsidian_note(
-    src: &Path,
-    dest: &Path,
-    vault_contents: &[PathBuf],
-    frontmatter_strategy: FrontmatterStrategy,
-) -> Result<()> {
-    let content = fs::read_to_string(&src).context(ReadError { path: src })?;
+    fn parse_and_export_obsidian_note(
+        &self,
+        src: &Path,
+        dest: &Path,
+        frontmatter_strategy: FrontmatterStrategy,
+    ) -> Result<()> {
+        let content = fs::read_to_string(&src).context(ReadError { path: src })?;
 
-    let (mut frontmatter, _content) =
-        matter::matter(&content).unwrap_or(("".to_string(), content.to_string()));
-    frontmatter = frontmatter.trim().to_string();
-    //let mut outfile = create_file(&dest).context(FileIOError { filename: dest })?;
-    let mut outfile = create_file(&dest)?;
+        let (mut frontmatter, _content) =
+            matter::matter(&content).unwrap_or(("".to_string(), content.to_string()));
+        frontmatter = frontmatter.trim().to_string();
+        //let mut outfile = create_file(&dest).context(FileIOError { filename: dest })?;
+        let mut outfile = create_file(&dest)?;
 
-    let write_frontmatter = match frontmatter_strategy {
-        FrontmatterStrategy::Always => true,
-        FrontmatterStrategy::Never => false,
-        FrontmatterStrategy::Auto => frontmatter != "",
-    };
-    if write_frontmatter {
-        if frontmatter != "" && !frontmatter.ends_with('\n') {
-            frontmatter.push('\n');
+        let write_frontmatter = match frontmatter_strategy {
+            FrontmatterStrategy::Always => true,
+            FrontmatterStrategy::Never => false,
+            FrontmatterStrategy::Auto => frontmatter != "",
+        };
+        if write_frontmatter {
+            if frontmatter != "" && !frontmatter.ends_with('\n') {
+                frontmatter.push('\n');
+            }
+            outfile
+                .write_all(format!("---\n{}---\n\n", frontmatter).as_bytes())
+                .context(WriteError { path: &dest })?;
         }
+
+        let mut context = Context::new(src.to_path_buf());
+        context.set_frontmatter_strategy(frontmatter_strategy);
+        let markdown_tree = self.parse_obsidian_note(&src, &context)?;
         outfile
-            .write_all(format!("---\n{}---\n\n", frontmatter).as_bytes())
+            .write_all(render_mdtree_to_mdtext(markdown_tree).as_bytes())
             .context(WriteError { path: &dest })?;
+        Ok(())
     }
 
-    let mut context = Context::new(src.to_path_buf(), vault_contents);
-    context.set_frontmatter_strategy(frontmatter_strategy);
-    let markdown_tree = parse_obsidian_note(&src, &context)?;
-    outfile
-        .write_all(render_mdtree_to_mdtext(markdown_tree).as_bytes())
-        .context(WriteError { path: &dest })?;
-    Ok(())
-}
+    fn parse_obsidian_note<'b>(&self, path: &Path, context: &Context) -> Result<MarkdownTree<'b>> {
+        if context.note_depth() > NOTE_RECURSION_LIMIT {
+            return Err(ExportError::RecursionLimitExceeded {
+                file_tree: context.file_tree(),
+            });
+        }
+        let content = fs::read_to_string(&path).context(ReadError { path })?;
+        let (_frontmatter, content) =
+            matter::matter(&content).unwrap_or(("".to_string(), content.to_string()));
 
-fn parse_obsidian_note<'a>(path: &Path, context: &Context) -> Result<MarkdownTree<'a>> {
-    if context.note_depth() > NOTE_RECURSION_LIMIT {
-        return Err(ExportError::RecursionLimitExceeded {
-            file_tree: context.file_tree(),
-        });
-    }
-    let content = fs::read_to_string(&path).context(ReadError { path })?;
-    let (_frontmatter, content) =
-        matter::matter(&content).unwrap_or(("".to_string(), content.to_string()));
+        let mut parser_options = Options::empty();
+        parser_options.insert(Options::ENABLE_TABLES);
+        parser_options.insert(Options::ENABLE_FOOTNOTES);
+        parser_options.insert(Options::ENABLE_STRIKETHROUGH);
+        parser_options.insert(Options::ENABLE_TASKLISTS);
 
-    let mut parser_options = Options::empty();
-    parser_options.insert(Options::ENABLE_TABLES);
-    parser_options.insert(Options::ENABLE_FOOTNOTES);
-    parser_options.insert(Options::ENABLE_STRIKETHROUGH);
-    parser_options.insert(Options::ENABLE_TASKLISTS);
+        // Use of ENABLE_SMART_PUNCTUATION causes character replacements which breaks up the single
+        // Event::Text element that is emitted between `[[` and `]]` into an unpredictable number of
+        // additional elements. This completely throws off the current parsing strategy and is
+        // unsupported. If a user were to want this, a strategy would be to do a second-stage pass over
+        // the rewritten markdown just before feeding to pulldown_cmark_to_cmark.
+        //parser_options.insert(Options::ENABLE_SMART_PUNCTUATION);
 
-    // Use of ENABLE_SMART_PUNCTUATION causes character replacements which breaks up the single
-    // Event::Text element that is emitted between `[[` and `]]` into an unpredictable number of
-    // additional elements. This completely throws off the current parsing strategy and is
-    // unsupported. If a user were to want this, a strategy would be to do a second-stage pass over
-    // the rewritten markdown just before feeding to pulldown_cmark_to_cmark.
-    //parser_options.insert(Options::ENABLE_SMART_PUNCTUATION);
+        let mut parser = Parser::new_ext(&content, parser_options);
+        let mut tree = vec![];
+        let mut buffer = Vec::with_capacity(5);
 
-    let mut parser = Parser::new_ext(&content, parser_options);
-    let mut tree = vec![];
-    let mut buffer = Vec::with_capacity(5);
-
-    while let Some(event) = parser.next() {
-        match event {
-            Event::Text(CowStr::Borrowed("[")) | Event::Text(CowStr::Borrowed("![")) => {
-                buffer.push(event);
-                // A lone '[' or a '![' Text event signifies the possible start of a linked or
-                // embedded note. However, we cannot be sure unless it's also followed by another
-                // '[', the note reference itself and closed by a double ']'. To determine whether
-                // that's the case, we need to read ahead so we can backtrack later if needed.
-                for _ in 1..5 {
-                    if let Some(event) = parser.next() {
-                        buffer.push(event);
+        while let Some(event) = parser.next() {
+            match event {
+                Event::Text(CowStr::Borrowed("[")) | Event::Text(CowStr::Borrowed("![")) => {
+                    buffer.push(event);
+                    // A lone '[' or a '![' Text event signifies the possible start of a linked or
+                    // embedded note. However, we cannot be sure unless it's also followed by another
+                    // '[', the note reference itself and closed by a double ']'. To determine whether
+                    // that's the case, we need to read ahead so we can backtrack later if needed.
+                    for _ in 1..5 {
+                        if let Some(event) = parser.next() {
+                            buffer.push(event);
+                        }
                     }
-                }
-                if buffer.len() != 5
+                    if buffer.len() != 5
                     // buffer[0] has '[' or '![', but we already know this
                     || buffer[1] != Event::Text(CowStr::Borrowed("["))
                     || buffer[3] != Event::Text(CowStr::Borrowed("]"))
                     || buffer[4] != Event::Text(CowStr::Borrowed("]"))
-                {
-                    tree.append(&mut buffer);
-                    buffer.clear();
-                    continue;
-                }
+                    {
+                        tree.append(&mut buffer);
+                        buffer.clear();
+                        continue;
+                    }
 
-                if let Event::Text(CowStr::Borrowed(text)) = buffer[2] {
-                    match buffer[0] {
-                        Event::Text(CowStr::Borrowed("[")) => {
-                            let mut link_events = obsidian_note_link_to_markdown(&text, context);
-                            tree.append(&mut link_events);
-                            buffer.clear();
-                            continue;
+                    if let Event::Text(CowStr::Borrowed(text)) = buffer[2] {
+                        match buffer[0] {
+                            Event::Text(CowStr::Borrowed("[")) => {
+                                let mut link_events =
+                                    self.obsidian_note_link_to_markdown(&text, context);
+                                tree.append(&mut link_events);
+                                buffer.clear();
+                                continue;
+                            }
+                            Event::Text(CowStr::Borrowed("![")) => {
+                                let mut elements = self.embed_file(&text, &context)?;
+                                tree.append(&mut elements);
+                                buffer.clear();
+                                continue;
+                            }
+                            // This arm can never be reached due to the outer match against event, but
+                            // the compiler (currently) cannot infer this.
+                            _ => {}
                         }
-                        Event::Text(CowStr::Borrowed("![")) => {
-                            let mut elements = embed_file(&text, &context)?;
-                            tree.append(&mut elements);
-                            buffer.clear();
-                            continue;
-                        }
-                        // This arm can never be reached due to the outer match against event, but
-                        // the compiler (currently) cannot infer this.
-                        _ => {}
                     }
                 }
+                _ => tree.push(event),
             }
-            _ => tree.push(event),
+            if !buffer.is_empty() {
+                tree.append(&mut buffer);
+                buffer.clear();
+            }
         }
-        if !buffer.is_empty() {
-            tree.append(&mut buffer);
-            buffer.clear();
-        }
+        tree.append(&mut buffer);
+        Ok(tree.into_iter().map(event_to_owned).collect())
     }
-    tree.append(&mut buffer);
-    Ok(tree.into_iter().map(event_to_owned).collect())
-}
 
-// Generate markdown elements for a file that is embedded within another note.
-//
-// - If the file being embedded is a note, it's content is included at the point of embed.
-// - If the file is an image, an image tag is generated.
-// - For other types of file, a regular link is created instead.
-fn embed_file<'a, 'b>(note_name: &'a str, context: &'b Context) -> Result<MarkdownTree<'a>> {
-    // TODO: If a #section is specified, reduce returned MarkdownTree to just
-    // that section.
-    let note_name = note_name.split('#').collect::<Vec<&str>>()[0];
+    // Generate markdown elements for a file that is embedded within another note.
+    //
+    // - If the file being embedded is a note, it's content is included at the point of embed.
+    // - If the file is an image, an image tag is generated.
+    // - For other types of file, a regular link is created instead.
+    fn embed_file<'b>(&self, note_name: &'a str, context: &'a Context) -> Result<MarkdownTree<'a>> {
+        // TODO: If a #section is specified, reduce returned MarkdownTree to just
+        // that section.
+        let note_name = note_name.split('#').collect::<Vec<&str>>()[0];
 
-    let tree = match lookup_filename_in_vault(note_name, context.vault_contents) {
-        Some(path) => {
-            let context = Context::from_parent(context, path);
-            let no_ext = OsString::new();
-            match path.extension().unwrap_or(&no_ext).to_str() {
-                Some("md") => parse_obsidian_note(&path, &context)?,
-                Some("png") | Some("jpg") | Some("jpeg") | Some("gif") | Some("webp") => {
-                    make_link_to_file(&note_name, &note_name, &context)
-                        .into_iter()
-                        .map(|event| match event {
-                            // make_link_to_file returns a link to a file. With this we turn the link
-                            // into an image reference instead. Slightly hacky, but avoids needing
-                            // to keep another utility function around for this, or introducing an
-                            // extra parameter on make_link_to_file.
-                            Event::Start(Tag::Link(linktype, cowstr1, cowstr2)) => {
-                                Event::Start(Tag::Image(
-                                    linktype,
-                                    CowStr::from(cowstr1.into_string()),
-                                    CowStr::from(cowstr2.into_string()),
-                                ))
-                            }
-                            Event::End(Tag::Link(linktype, cowstr1, cowstr2)) => {
-                                Event::End(Tag::Image(
-                                    linktype,
-                                    CowStr::from(cowstr1.into_string()),
-                                    CowStr::from(cowstr2.into_string()),
-                                ))
-                            }
-                            _ => event,
-                        })
-                        .collect()
+        let tree = match lookup_filename_in_vault(note_name, &self.vault_contents.as_ref().unwrap())
+        {
+            Some(path) => {
+                let context = Context::from_parent(context, path);
+                let no_ext = OsString::new();
+                match path.extension().unwrap_or(&no_ext).to_str() {
+                    Some("md") => self.parse_obsidian_note(&path, &context)?,
+                    Some("png") | Some("jpg") | Some("jpeg") | Some("gif") | Some("webp") => {
+                        self.make_link_to_file(&note_name, &note_name, &context)
+                            .into_iter()
+                            .map(|event| match event {
+                                // make_link_to_file returns a link to a file. With this we turn the link
+                                // into an image reference instead. Slightly hacky, but avoids needing
+                                // to keep another utility function around for this, or introducing an
+                                // extra parameter on make_link_to_file.
+                                Event::Start(Tag::Link(linktype, cowstr1, cowstr2)) => {
+                                    Event::Start(Tag::Image(
+                                        linktype,
+                                        CowStr::from(cowstr1.into_string()),
+                                        CowStr::from(cowstr2.into_string()),
+                                    ))
+                                }
+                                Event::End(Tag::Link(linktype, cowstr1, cowstr2)) => {
+                                    Event::End(Tag::Image(
+                                        linktype,
+                                        CowStr::from(cowstr1.into_string()),
+                                        CowStr::from(cowstr2.into_string()),
+                                    ))
+                                }
+                                _ => event,
+                            })
+                            .collect()
+                    }
+                    _ => self.make_link_to_file(&note_name, &note_name, &context),
                 }
-                _ => make_link_to_file(&note_name, &note_name, &context),
             }
-        }
-        None => {
+            None => {
+                // TODO: Extract into configurable function.
+                println!(
+                    "Warning: Unable to find embedded note\n\tReference: '{}'\n\tSource: '{}'\n",
+                    note_name,
+                    context.current_file().display(),
+                );
+                vec![]
+            }
+        };
+        Ok(tree)
+    }
+
+    fn obsidian_note_link_to_markdown(&self, content: &'a str, context: &Context) -> MarkdownTree {
+        let captures = OBSIDIAN_NOTE_LINK_RE
+            .captures(&content)
+            .expect("note link regex didn't match - bad input?");
+        let notename = captures
+            .name("file")
+            .expect("Obsidian links should always reference a file");
+        let label = captures.name("label").unwrap_or(notename);
+
+        self.make_link_to_file(notename.as_str(), label.as_str(), context)
+    }
+
+    fn make_link_to_file<'b>(
+        &self,
+        file: &'b str,
+        label: &'b str,
+        context: &Context,
+    ) -> MarkdownTree<'b> {
+        let target_file = lookup_filename_in_vault(file, &self.vault_contents.as_ref().unwrap());
+        if target_file.is_none() {
             // TODO: Extract into configurable function.
             println!(
-                "Warning: Unable to find embedded note\n\tReference: '{}'\n\tSource: '{}'\n",
-                note_name,
+                "Warning: Unable to find referenced note\n\tReference: '{}'\n\tSource: '{}'\n",
+                file,
                 context.current_file().display(),
             );
-            vec![]
+            return vec![
+                Event::Start(Tag::Emphasis),
+                Event::Text(CowStr::from(String::from(label))),
+                Event::End(Tag::Emphasis),
+            ];
         }
-    };
-    Ok(tree)
-}
+        let target_file = target_file.unwrap();
+        let rel_link = diff_paths(
+            target_file,
+            &context
+                .current_file()
+                .parent()
+                .expect("obsidian content files should always have a parent"),
+        )
+        .expect("should be able to build relative path when target file is found in vault");
+        let rel_link = rel_link.to_string_lossy();
+        let encoded_link = utf8_percent_encode(&rel_link, PERCENTENCODE_CHARS);
 
-fn obsidian_note_link_to_markdown<'a>(content: &'a str, context: &Context) -> MarkdownTree<'a> {
-    let captures = OBSIDIAN_NOTE_LINK_RE
-        .captures(&content)
-        .expect("note link regex didn't match - bad input?");
-    let notename = captures
-        .name("file")
-        .expect("Obsidian links should always reference a file");
-    let label = captures.name("label").unwrap_or(notename);
-
-    make_link_to_file(notename.as_str(), label.as_str(), context)
-}
-
-fn make_link_to_file<'a>(file: &'a str, label: &'a str, context: &Context) -> MarkdownTree<'a> {
-    let target_file = lookup_filename_in_vault(file, context.vault_contents);
-    if target_file.is_none() {
-        // TODO: Extract into configurable function.
-        println!(
-            "Warning: Unable to find referenced note\n\tReference: '{}'\n\tSource: '{}'\n",
-            file,
-            context.current_file().display(),
+        let link = pulldown_cmark::Tag::Link(
+            pulldown_cmark::LinkType::Inline,
+            CowStr::from(encoded_link.to_string()),
+            CowStr::from(""),
         );
-        return vec![
-            Event::Start(Tag::Emphasis),
-            Event::Text(CowStr::from(String::from(label))),
-            Event::End(Tag::Emphasis),
-        ];
+
+        vec![
+            Event::Start(link.clone()),
+            Event::Text(CowStr::from(label)),
+            Event::End(link.clone()),
+        ]
     }
-    let target_file = target_file.unwrap();
-    let rel_link = diff_paths(
-        target_file,
-        &context
-            .current_file()
-            .parent()
-            .expect("obsidian content files should always have a parent"),
-    )
-    .expect("should be able to build relative path when target file is found in vault");
-    let rel_link = rel_link.to_string_lossy();
-    let encoded_link = utf8_percent_encode(&rel_link, PERCENTENCODE_CHARS);
-
-    let link = pulldown_cmark::Tag::Link(
-        pulldown_cmark::LinkType::Inline,
-        CowStr::from(encoded_link.to_string()),
-        CowStr::from(""),
-    );
-
-    vec![
-        Event::Start(link.clone()),
-        Event::Text(CowStr::from(label)),
-        Event::End(link.clone()),
-    ]
 }
 
 fn lookup_filename_in_vault<'a>(
