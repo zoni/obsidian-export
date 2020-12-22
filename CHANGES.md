@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.4.0 (2020-12-23)
+
+### Fixes
+
+* Correct relative links within embedded notes. [Nick Groenen]
+
+  Links within an embedded note would point to other local resources
+  relative to the filesystem location of the note being embedded.
+
+  When a note inside a different directory would embed such a note, these
+  links would point to invalid locations.
+
+  Now these links are calculated relative to the top note, which ensures
+  these links will point to the right path.
+
+### Other
+
+* Add brief library documentation to all public types and functions. [Nick Groenen]
+
+
+
 ## v0.3.0 (2020-12-21)
 
 ### New
