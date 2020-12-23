@@ -33,10 +33,15 @@ pub struct WalkOptions<'a> {
 
 impl<'a> fmt::Debug for WalkOptions<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let filter_fn_fmt = match self.filter_fn {
+            Some(_) => "<function set>",
+            None => "<not set>",
+        };
         f.debug_struct("WalkOptions")
             .field("ignore_filename", &self.ignore_filename)
             .field("ignore_hidden", &self.ignore_hidden)
             .field("honor_gitignore", &self.honor_gitignore)
+            .field("filter_fn", &filter_fn_fmt)
             .finish()
     }
 }
