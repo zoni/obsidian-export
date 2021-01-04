@@ -24,7 +24,7 @@ type MarkdownTree<'a> = Vec<Event<'a>>;
 
 lazy_static! {
     static ref OBSIDIAN_NOTE_LINK_RE: Regex =
-        Regex::new(r"^(?P<file>[^#|]+)(#(?P<block>.+?))??(\|(?P<label>.+?))??$").unwrap();
+        Regex::new(r"^(?P<file>[^#|]+)(#(?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap();
 }
 const PERCENTENCODE_CHARS: &AsciiSet = &CONTROLS.add(b' ').add(b'(').add(b')').add(b'%');
 const NOTE_RECURSION_LIMIT: usize = 10;
@@ -114,6 +114,17 @@ struct Context {
     frontmatter_strategy: FrontmatterStrategy,
 }
 
+#[derive(Debug, Clone)]
+/// ObsidianNoteReference represents the structure of a `[[note]]` or `![[embed]]` reference.
+struct ObsidianNoteReference<'a> {
+    /// The file (note name or partial path) being referenced.
+    file: &'a str,
+    /// If specific, a specific section/heading being referenced.
+    section: Option<&'a str>,
+    /// If specific, the custom label/text which was specified.
+    label: Option<&'a str>,
+}
+
 impl Context {
     /// Create a new `Context`
     fn new(file: PathBuf) -> Context {
@@ -164,6 +175,26 @@ impl Context {
     /// which is currently being processed (see also `current_file`).
     fn file_tree(&self) -> Vec<PathBuf> {
         self.file_tree.clone()
+    }
+}
+
+impl<'a> ObsidianNoteReference<'a> {
+    fn from_str(text: &str) -> ObsidianNoteReference {
+        let captures = OBSIDIAN_NOTE_LINK_RE
+            .captures(&text)
+            .expect("note link regex didn't match - bad input?");
+        let file = captures
+            .name("file")
+            .expect("Obsidian links should always reference a file")
+            .as_str();
+        let label = captures.name("label").map(|v| v.as_str());
+        let section = captures.name("section").map(|v| v.as_str());
+
+        ObsidianNoteReference {
+            file,
+            label,
+            section,
+        }
     }
 }
 
@@ -387,70 +418,67 @@ impl<'a> Exporter<'a> {
     // - If the file being embedded is a note, it's content is included at the point of embed.
     // - If the file is an image, an image tag is generated.
     // - For other types of file, a regular link is created instead.
-    fn embed_file<'b>(&self, note_name: &'a str, context: &'a Context) -> Result<MarkdownTree<'a>> {
-        // TODO: If a #section is specified, reduce returned MarkdownTree to just
-        // that section.
-        let note_name = note_name.split('#').collect::<Vec<&str>>()[0];
+    fn embed_file<'b>(&self, link_text: &'a str, context: &'a Context) -> Result<MarkdownTree<'a>> {
+        let note_ref = ObsidianNoteReference::from_str(link_text);
 
-        let tree = match lookup_filename_in_vault(note_name, &self.vault_contents.as_ref().unwrap())
-        {
-            Some(path) => {
-                let context = Context::from_parent(context, path);
-                let no_ext = OsString::new();
-                match path.extension().unwrap_or(&no_ext).to_str() {
-                    Some("md") => self.parse_obsidian_note(&path, &context)?,
-                    Some("png") | Some("jpg") | Some("jpeg") | Some("gif") | Some("webp") => {
-                        self.make_link_to_file(&note_name, &note_name, &context)
-                            .into_iter()
-                            .map(|event| match event {
-                                // make_link_to_file returns a link to a file. With this we turn the link
-                                // into an image reference instead. Slightly hacky, but avoids needing
-                                // to keep another utility function around for this, or introducing an
-                                // extra parameter on make_link_to_file.
-                                Event::Start(Tag::Link(linktype, cowstr1, cowstr2)) => {
-                                    Event::Start(Tag::Image(
-                                        linktype,
-                                        CowStr::from(cowstr1.into_string()),
-                                        CowStr::from(cowstr2.into_string()),
-                                    ))
-                                }
-                                Event::End(Tag::Link(linktype, cowstr1, cowstr2)) => {
-                                    Event::End(Tag::Image(
-                                        linktype,
-                                        CowStr::from(cowstr1.into_string()),
-                                        CowStr::from(cowstr2.into_string()),
-                                    ))
-                                }
-                                _ => event,
-                            })
-                            .collect()
-                    }
-                    _ => self.make_link_to_file(&note_name, &note_name, &context),
+        let path = lookup_filename_in_vault(note_ref.file, &self.vault_contents.as_ref().unwrap());
+        if path.is_none() {
+            // TODO: Extract into configurable function.
+            println!(
+                "Warning: Unable to find embedded note\n\tReference: '{}'\n\tSource: '{}'\n",
+                note_ref.file,
+                context.current_file().display(),
+            );
+            return Ok(vec![]);
+        }
+
+        let path = path.unwrap();
+        let context = Context::from_parent(context, path);
+        let no_ext = OsString::new();
+
+        let tree = match path.extension().unwrap_or(&no_ext).to_str() {
+            Some("md") => {
+                let mut tree = self.parse_obsidian_note(&path, &context)?;
+                if let Some(section) = note_ref.section {
+                    tree = reduce_to_section(tree, section);
                 }
+                tree
             }
-            None => {
-                // TODO: Extract into configurable function.
-                println!(
-                    "Warning: Unable to find embedded note\n\tReference: '{}'\n\tSource: '{}'\n",
-                    note_name,
-                    context.current_file().display(),
-                );
-                vec![]
+            Some("png") | Some("jpg") | Some("jpeg") | Some("gif") | Some("webp") => {
+                self.make_link_to_file(&note_ref.file, &note_ref.file, &context)
+                    .into_iter()
+                    .map(|event| match event {
+                        // make_link_to_file returns a link to a file. With this we turn the link
+                        // into an image reference instead. Slightly hacky, but avoids needing
+                        // to keep another utility function around for this, or introducing an
+                        // extra parameter on make_link_to_file.
+                        Event::Start(Tag::Link(linktype, cowstr1, cowstr2)) => {
+                            Event::Start(Tag::Image(
+                                linktype,
+                                CowStr::from(cowstr1.into_string()),
+                                CowStr::from(cowstr2.into_string()),
+                            ))
+                        }
+                        Event::End(Tag::Link(linktype, cowstr1, cowstr2)) => {
+                            Event::End(Tag::Image(
+                                linktype,
+                                CowStr::from(cowstr1.into_string()),
+                                CowStr::from(cowstr2.into_string()),
+                            ))
+                        }
+                        _ => event,
+                    })
+                    .collect()
             }
+            _ => self.make_link_to_file(&note_ref.file, &note_ref.file, &context),
         };
         Ok(tree)
     }
 
     fn obsidian_note_link_to_markdown(&self, content: &'a str, context: &Context) -> MarkdownTree {
-        let captures = OBSIDIAN_NOTE_LINK_RE
-            .captures(&content)
-            .expect("note link regex didn't match - bad input?");
-        let notename = captures
-            .name("file")
-            .expect("Obsidian links should always reference a file");
-        let label = captures.name("label").unwrap_or(notename);
-
-        self.make_link_to_file(notename.as_str(), label.as_str(), context)
+        let note_ref = ObsidianNoteReference::from_str(content);
+        let label = note_ref.label.unwrap_or(note_ref.file);
+        self.make_link_to_file(note_ref.file, label, context)
     }
 
     fn make_link_to_file<'b>(
@@ -567,6 +595,55 @@ fn is_markdown_file(file: &Path) -> bool {
     let no_ext = OsString::new();
     let ext = file.extension().unwrap_or(&no_ext).to_string_lossy();
     ext == "md"
+}
+
+/// Reduce a given `MarkdownTree` to just those elements which are children of the given section
+/// (heading name).
+fn reduce_to_section<'a, 'b>(tree: MarkdownTree<'a>, section: &'b str) -> MarkdownTree<'a> {
+    let mut new_tree = Vec::with_capacity(tree.len());
+    let mut target_section_encountered = false;
+    let mut currently_in_target_section = false;
+    let mut section_level = 0;
+    let mut last_level = 0;
+    let mut last_tag_was_heading = false;
+
+    for event in tree.into_iter() {
+        new_tree.push(event.clone());
+        match event {
+            Event::Start(Tag::Heading(level)) => {
+                last_tag_was_heading = true;
+                last_level = level;
+                if currently_in_target_section && level <= section_level {
+                    currently_in_target_section = false;
+                    new_tree.pop();
+                }
+            }
+            Event::Text(cowstr) => {
+                if !last_tag_was_heading {
+                    last_tag_was_heading = false;
+                    continue;
+                }
+                last_tag_was_heading = false;
+
+                if cowstr.to_string().to_lowercase() == section.to_lowercase() {
+                    target_section_encountered = true;
+                    currently_in_target_section = true;
+                    section_level = last_level;
+
+                    let current_event = new_tree.pop().unwrap();
+                    let heading_start_event = new_tree.pop().unwrap();
+                    new_tree.clear();
+                    new_tree.push(heading_start_event);
+                    new_tree.push(current_event);
+                }
+            }
+            _ => {}
+        }
+        if target_section_encountered && !currently_in_target_section {
+            return new_tree;
+        }
+    }
+    new_tree
 }
 
 fn event_to_owned<'a>(event: Event) -> Event<'a> {
