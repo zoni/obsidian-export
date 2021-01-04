@@ -11,8 +11,10 @@ use pulldown_cmark::{CodeBlockKind, CowStr, Event, Options, Parser, Tag};
 use pulldown_cmark_to_cmark::cmark_with_options;
 use rayon::prelude::*;
 use regex::Regex;
+use slug::slugify;
 use snafu::{ResultExt, Snafu};
 use std::ffi::OsString;
+use std::fmt;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::ErrorKind;
@@ -195,6 +197,24 @@ impl<'a> ObsidianNoteReference<'a> {
             label,
             section,
         }
+    }
+
+    fn display(&self) -> String {
+        format!("{}", self)
+    }
+}
+
+impl<'a> fmt::Display for ObsidianNoteReference<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let label = self
+            .label
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| match self.section {
+                Some(section) => format!("{} > {}", self.file, section),
+                None => self.file.to_string(),
+            })
+            .to_string();
+        write!(f, "{}", label)
     }
 }
 
@@ -384,9 +404,11 @@ impl<'a> Exporter<'a> {
                     if let Event::Text(CowStr::Borrowed(text)) = buffer[2] {
                         match buffer[0] {
                             Event::Text(CowStr::Borrowed("[")) => {
-                                let mut link_events =
-                                    self.obsidian_note_link_to_markdown(&text, context);
-                                tree.append(&mut link_events);
+                                let mut elements = self.make_link_to_file(
+                                    ObsidianNoteReference::from_str(&text),
+                                    context,
+                                );
+                                tree.append(&mut elements);
                                 buffer.clear();
                                 continue;
                             }
@@ -445,7 +467,7 @@ impl<'a> Exporter<'a> {
                 tree
             }
             Some("png") | Some("jpg") | Some("jpeg") | Some("gif") | Some("webp") => {
-                self.make_link_to_file(&note_ref.file, &note_ref.file, &context)
+                self.make_link_to_file(note_ref, &context)
                     .into_iter()
                     .map(|event| match event {
                         // make_link_to_file returns a link to a file. With this we turn the link
@@ -470,34 +492,28 @@ impl<'a> Exporter<'a> {
                     })
                     .collect()
             }
-            _ => self.make_link_to_file(&note_ref.file, &note_ref.file, &context),
+            _ => self.make_link_to_file(note_ref, &context),
         };
         Ok(tree)
     }
 
-    fn obsidian_note_link_to_markdown(&self, content: &'a str, context: &Context) -> MarkdownTree {
-        let note_ref = ObsidianNoteReference::from_str(content);
-        let label = note_ref.label.unwrap_or(note_ref.file);
-        self.make_link_to_file(note_ref.file, label, context)
-    }
-
     fn make_link_to_file<'b>(
         &self,
-        file: &'b str,
-        label: &'b str,
+        reference: ObsidianNoteReference<'b>,
         context: &Context,
     ) -> MarkdownTree<'b> {
-        let target_file = lookup_filename_in_vault(file, &self.vault_contents.as_ref().unwrap());
+        let target_file =
+            lookup_filename_in_vault(reference.file, &self.vault_contents.as_ref().unwrap());
         if target_file.is_none() {
             // TODO: Extract into configurable function.
             println!(
                 "Warning: Unable to find referenced note\n\tReference: '{}'\n\tSource: '{}'\n",
-                file,
+                reference.file,
                 context.current_file().display(),
             );
             return vec![
                 Event::Start(Tag::Emphasis),
-                Event::Text(CowStr::from(String::from(label))),
+                Event::Text(CowStr::from(reference.display())),
                 Event::End(Tag::Emphasis),
             ];
         }
@@ -513,19 +529,25 @@ impl<'a> Exporter<'a> {
                 .expect("obsidian content files should always have a parent"),
         )
         .expect("should be able to build relative path when target file is found in vault");
-        let rel_link = rel_link.to_string_lossy();
-        let encoded_link = utf8_percent_encode(&rel_link, PERCENTENCODE_CHARS);
 
-        let link = pulldown_cmark::Tag::Link(
+        let rel_link = rel_link.to_string_lossy();
+        let mut link = utf8_percent_encode(&rel_link, PERCENTENCODE_CHARS).to_string();
+
+        if let Some(section) = reference.section {
+            link.push('#');
+            link.push_str(&slugify(section));
+        }
+
+        let link_tag = pulldown_cmark::Tag::Link(
             pulldown_cmark::LinkType::Inline,
-            CowStr::from(encoded_link.to_string()),
+            CowStr::from(link.to_string()),
             CowStr::from(""),
         );
 
         vec![
-            Event::Start(link.clone()),
-            Event::Text(CowStr::from(label)),
-            Event::End(link.clone()),
+            Event::Start(link_tag.clone()),
+            Event::Text(CowStr::from(reference.display())),
+            Event::End(link_tag.clone()),
         ]
     }
 }

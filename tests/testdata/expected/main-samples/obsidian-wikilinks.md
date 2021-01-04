@@ -2,6 +2,10 @@ Link to [pure-markdown-examples](pure-markdown-examples.md) and the same [Pure-M
 
 Link to [pure markdown examples](pure-markdown-examples.md).
 
+Link to [pure-markdown-examples > Heading 1](pure-markdown-examples.md#heading-1).
+
+Link to [pure markdown examples](pure-markdown-examples.md#heading-1).
+
 Link within backticks: `[[pure-markdown-examples]]`
 
 ````
