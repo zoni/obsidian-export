@@ -72,9 +72,12 @@ To completely remove any frontmatter from exported notes, use `--frontmatter=nev
 ### Ignoring files
 
 By default, hidden files, patterns listed in `.export-ignore` as well as any files ignored by git (if your vault is part of a git repository) will be excluded from exports.
-These options will become configurable in the next release.
 
-Notes linking to ignored notes will be unlinked (they'll only include the link text). Embeds of ignored notes will be skipped entirely.
+These options may be adjusted with `--hidden`, `--ignore-file` and `--no-git` if desired.
+(See `--help` for more information).
+
+Notes linking to ignored notes will be unlinked (they'll only include the link text).
+Embeds of ignored notes will be skipped entirely.
 
 #### Ignorefile syntax
 

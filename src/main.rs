@@ -1,6 +1,6 @@
 use eyre::{eyre, Result};
 use gumdrop::Options;
-use obsidian_export::{ExportError, Exporter, FrontmatterStrategy};
+use obsidian_export::{ExportError, Exporter, FrontmatterStrategy, WalkOptions};
 use std::path::PathBuf;
 
 #[derive(Debug, Options)]
@@ -22,6 +22,19 @@ struct Opts {
         default = "auto"
     )]
     frontmatter_strategy: FrontmatterStrategy,
+
+    #[options(
+        no_short,
+        help = "Read ignore patterns from files with this name",
+        default = ".export-ignore"
+    )]
+    ignore_file: String,
+
+    #[options(no_short, help = "Export hidden files", default = "false")]
+    hidden: bool,
+
+    #[options(no_short, help = "Disable git integration", default = "false")]
+    no_git: bool,
 }
 
 fn frontmatter_strategy_from_str(input: &str) -> Result<FrontmatterStrategy> {
@@ -38,10 +51,14 @@ fn main() -> Result<()> {
     let source = args.source.unwrap();
     let destination = args.destination.unwrap();
 
+    let mut walk_options = WalkOptions::default();
+    walk_options.ignore_filename = &args.ignore_file;
+    walk_options.ignore_hidden = !args.hidden;
+    walk_options.honor_gitignore = !args.no_git;
+
     let mut exporter = Exporter::new(source, destination);
     exporter.frontmatter_strategy(args.frontmatter_strategy);
-    // TODO: Pass in configurable walk_options here: exporter.walk_options(..);
-    // TODO: This should allow settings for ignore_hidden and honor_gitignore.
+    exporter.walk_options(walk_options);
 
     if let Err(err) = exporter.run() {
         match err {
