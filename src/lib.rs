@@ -446,7 +446,7 @@ impl<'a> Exporter<'a> {
         let path = lookup_filename_in_vault(note_ref.file, &self.vault_contents.as_ref().unwrap());
         if path.is_none() {
             // TODO: Extract into configurable function.
-            println!(
+            eprintln!(
                 "Warning: Unable to find embedded note\n\tReference: '{}'\n\tSource: '{}'\n",
                 note_ref.file,
                 context.current_file().display(),
@@ -506,7 +506,7 @@ impl<'a> Exporter<'a> {
             lookup_filename_in_vault(reference.file, &self.vault_contents.as_ref().unwrap());
         if target_file.is_none() {
             // TODO: Extract into configurable function.
-            println!(
+            eprintln!(
                 "Warning: Unable to find referenced note\n\tReference: '{}'\n\tSource: '{}'\n",
                 reference.file,
                 context.current_file().display(),
