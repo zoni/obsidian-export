@@ -64,5 +64,15 @@ test
 
 For more comprehensive documentation and examples, see the [gitignore] manpage.
 
+### Recursive embeds
+
+It's possible to end up with "recursive embeds" when two notes embed each other.
+This happens for example when a `Note A.md` contains `![[Note B]]` but `Note B.md` also contains `![[Note A]]`.
+
+By default, this will trigger an error and display the chain of notes which caused the recursion.
+
+This behavior may be changed by specifying `--no-recursive-embeds`.
+Using this mode, if a note is encountered for a second time while processing the original note, instead of embedding it again a link to the note is inserted instead to break the cycle.
+
 [from_utf8_lossy]: https://doc.rust-lang.org/std/string/struct.String.html#method.from_utf8_lossy
 [gitignore]: https://git-scm.com/docs/gitignore

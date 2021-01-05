@@ -258,7 +258,7 @@ fn test_infinite_recursion() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
 
     let err = Exporter::new(
-        PathBuf::from("tests/testdata/input/infinite-recursion/note.md"),
+        PathBuf::from("tests/testdata/input/infinite-recursion/"),
         tmp_dir.path().to_path_buf(),
     )
     .run()
@@ -271,6 +271,23 @@ fn test_infinite_recursion() {
         },
         err => panic!("Wrong error variant: {:?}", err),
     }
+}
+
+#[test]
+fn test_no_recursive_embeds() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+
+    let mut exporter = Exporter::new(
+        PathBuf::from("tests/testdata/input/infinite-recursion/"),
+        tmp_dir.path().to_path_buf(),
+    );
+    exporter.process_embeds_recursively(false);
+    exporter.run().expect("exporter returned error");
+
+    assert_eq!(
+        read_to_string("tests/testdata/expected/infinite-recursion/Note A.md").unwrap(),
+        read_to_string(tmp_dir.path().clone().join(PathBuf::from("Note A.md"))).unwrap(),
+    );
 }
 
 #[test]

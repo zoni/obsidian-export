@@ -35,6 +35,9 @@ struct Opts {
 
     #[options(no_short, help = "Disable git integration", default = "false")]
     no_git: bool,
+
+    #[options(no_short, help = "Don't process embeds recursively", default = "false")]
+    no_recursive_embeds: bool,
 }
 
 fn frontmatter_strategy_from_str(input: &str) -> Result<FrontmatterStrategy> {
@@ -58,6 +61,7 @@ fn main() -> Result<()> {
 
     let mut exporter = Exporter::new(source, destination);
     exporter.frontmatter_strategy(args.frontmatter_strategy);
+    exporter.process_embeds_recursively(!args.no_recursive_embeds);
     exporter.walk_options(walk_options);
 
     if let Err(err) = exporter.run() {
@@ -79,8 +83,9 @@ fn main() -> Result<()> {
                     );
                     eprintln!("\nFile tree:");
                     for (idx, path) in file_tree.iter().enumerate() {
-                        eprintln!("{}-> {}", "  ".repeat(idx), path.display());
+                        eprintln!("  {}-> {}", "  ".repeat(idx), path.display());
                     }
+                    eprintln!("\nHint: Ensure notes are non-recursive, or specify --no-recursive-embeds to break cycles")
                 }
                 _ => eprintln!("Error: {:?}", eyre!(err)),
             },

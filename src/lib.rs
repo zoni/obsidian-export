@@ -107,6 +107,7 @@ pub struct Exporter<'a> {
     frontmatter_strategy: FrontmatterStrategy,
     vault_contents: Option<Vec<PathBuf>>,
     walk_options: WalkOptions<'a>,
+    process_embeds_recursively: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -227,6 +228,7 @@ impl<'a> Exporter<'a> {
             destination,
             frontmatter_strategy: FrontmatterStrategy::Auto,
             walk_options: WalkOptions::default(),
+            process_embeds_recursively: true,
             vault_contents: None,
         }
     }
@@ -240,6 +242,19 @@ impl<'a> Exporter<'a> {
     /// Set the [`FrontmatterStrategy`] to be used for this exporter.
     pub fn frontmatter_strategy(&mut self, strategy: FrontmatterStrategy) -> &mut Exporter<'a> {
         self.frontmatter_strategy = strategy;
+        self
+    }
+
+    /// Set the behavior when recursive embeds are encountered.
+    ///
+    /// When `recursive` is true (the default), emdeds are always processed recursively. This may
+    /// lead to infinite recursion when note A embeds B, but B also embeds A.
+    /// (When this happens, [ExportError::RecursionLimitExceeded] will be returned by [Exporter::run]).
+    ///
+    /// When `recursive` is false, if a note is encountered for a second time while processing the
+    /// original note, instead of embedding it again a link to the note is inserted instead.
+    pub fn process_embeds_recursively(&mut self, recursive: bool) -> &mut Exporter<'a> {
+        self.process_embeds_recursively = recursive;
         self
     }
 
@@ -455,19 +470,27 @@ impl<'a> Exporter<'a> {
         }
 
         let path = path.unwrap();
-        let context = Context::from_parent(context, path);
+        let child_context = Context::from_parent(context, path);
         let no_ext = OsString::new();
+
+        if !self.process_embeds_recursively && context.file_tree.contains(path) {
+            return Ok([
+                vec![Event::Text(CowStr::Borrowed("→ "))],
+                self.make_link_to_file(note_ref, &child_context),
+            ]
+            .concat());
+        }
 
         let tree = match path.extension().unwrap_or(&no_ext).to_str() {
             Some("md") => {
-                let mut tree = self.parse_obsidian_note(&path, &context)?;
+                let mut tree = self.parse_obsidian_note(&path, &child_context)?;
                 if let Some(section) = note_ref.section {
                     tree = reduce_to_section(tree, section);
                 }
                 tree
             }
             Some("png") | Some("jpg") | Some("jpeg") | Some("gif") | Some("webp") => {
-                self.make_link_to_file(note_ref, &context)
+                self.make_link_to_file(note_ref, &child_context)
                     .into_iter()
                     .map(|event| match event {
                         // make_link_to_file returns a link to a file. With this we turn the link
@@ -492,7 +515,7 @@ impl<'a> Exporter<'a> {
                     })
                     .collect()
             }
-            _ => self.make_link_to_file(note_ref, &context),
+            _ => self.make_link_to_file(note_ref, &child_context),
         };
         Ok(tree)
     }
