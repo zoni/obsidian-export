@@ -1,5 +1,70 @@
 # Changelog
 
+## v0.5.0 (2021-01-05)
+
+### New
+
+* Add --no-recursive-embeds to break infinite recursion cycles. \[Nick Groenen]
+  
+  It's possible to end up with "recursive embeds" when two notes embed
+  each other. This happens for example when a `Note A.md` contains
+  `![[Note B]]` but `Note B.md` also contains `![[Note A]]`.
+  
+  By default, this will trigger an error and display the chain of notes
+  which caused the recursion.
+  
+  Using the new `--no-recursive-embeds`, if a note is encountered for a
+  second time while processing the original note, rather than embedding it
+  again a link to the note is inserted instead to break the cycle.
+  
+  See also: https://github.com/zoni/obsidian-export/issues/1
+
+* Make walk options configurable on CLI. \[Nick Groenen]
+  
+  By default hidden files, patterns listed in `.export-ignore` as well as
+  any files ignored by git are excluded from exports. This behavior has
+  been made configurable on the CLI using the new flags `--hidden`,
+  `--ignore-file` and `--no-git`.
+
+* Support links referencing headings. \[Nick Groenen]
+  
+  Previously, links referencing a heading (`[[note#heading]]`) would just
+  link to the file name without including an anchor in the link target.
+  Now, such references will include an appropriate `#anchor` attribute.
+  
+  Note that neither the original Markdown specification, nor the more
+  recent CommonMark standard, specify how anchors should be constructed
+  for a given heading.
+  
+  There are also some differences between the various Markdown rendering
+  implementations.
+  
+  Obsidian-export uses the [slug](https://crates.io/crates/slug) crate to generate anchors which should
+  be compatible with most implementations, however your mileage may vary.
+  
+  (For example, GitHub may leave a trailing `-` on anchors when headings
+  end with a smiley. The slug library, and thus obsidian-export, will
+  avoid such dangling dashes).
+
+* Support embeds referencing headings. \[Nick Groenen]
+  
+  Previously, partial embeds (`![[note#heading]]`) would always include
+  the entire file into the source note. Now, such embeds will only include
+  the contents of the referenced heading (and any subheadings).
+  
+  Links and embeds of [arbitrary blocks](https://publish.obsidian.md/help/How+to/Link+to+blocks) remains unsupported at this time.
+
+### Changes
+
+* Print warnings to stderr rather than stdout. \[Nick Groenen]
+  
+  Warning messages emitted when encountering broken links/references will
+  now be printed to stderr as opposed to stdout.
+
+### Other
+
+* Include filter_fn field in WalkOptions debug display. \[Nick Groenen]
+
 ## v0.4.0 (2020-12-23)
 
 ### Fixes

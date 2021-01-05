@@ -4,7 +4,6 @@
 
 * Recursively export Obsidian Markdown files to CommonMark.
 * Supports `[[note]]`-style references as well as `![[note]]` file includes.
-  * `[[note#heading]]` linking/embedding not yet supported, but planned.
 * Support for [gitignore](https://git-scm.com/docs/gitignore)-style exclude patterns (default: `.export-ignore`).
 * Automatically excludes files that are ignored by Git when the vault is located in a Git repository.
 
