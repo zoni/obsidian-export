@@ -586,10 +586,11 @@ fn lookup_filename_in_vault<'a>(
     // sentence even if the note is capitalized for example) so we also try a case-insensitive
     // lookup.
     vault_contents.iter().find(|path| {
+        let path_lowered = PathBuf::from(path.to_string_lossy().to_lowercase());
         path.ends_with(&filename)
-            || path.ends_with(&filename.to_lowercase())
+            || path_lowered.ends_with(&filename.to_lowercase())
             || path.ends_with(format!("{}.md", &filename))
-            || path.ends_with(format!("{}.md", &filename.to_lowercase()))
+            || path_lowered.ends_with(format!("{}.md", &filename.to_lowercase()))
     })
 }
 
