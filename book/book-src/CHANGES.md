@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.5.1 (2021-01-10)
+
+### Fixes
+
+* Find uppercased notes when referenced with lowercase. \[Nick Groenen]
+  
+  This commit fixes a bug where, if a note contained uppercase characters
+  (for example `Note.md`) but was referred to using lowercase
+  (`[[note]]`), that note would not be found.
+
 ## v0.5.0 (2021-01-05)
 
 ### New
