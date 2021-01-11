@@ -24,7 +24,7 @@ path = "src/main.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-eyre = "0.6.3"
+eyre = "0.6.5"
 gumdrop = "0.8.0"
 ignore = "0.4.17"
 lazy_static = "1.4.0"
