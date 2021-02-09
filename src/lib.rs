@@ -459,10 +459,14 @@ impl<'a> Exporter<'a> {
     fn embed_file<'b>(&self, link_text: &'a str, context: &'a Context) -> Result<MarkdownTree<'a>> {
         let note_ref = ObsidianNoteReference::from_str(link_text);
 
-        let path = note_ref
-            .file
-            .map(|file| lookup_filename_in_vault(file, &self.vault_contents.as_ref().unwrap()))
-            .unwrap_or_else(|| Some(context.current_file()));
+        let path = match note_ref.file {
+            Some(file) => lookup_filename_in_vault(file, &self.vault_contents.as_ref().unwrap()),
+
+            // If we have None file it is either to a section or id within the same file and thus
+            // the current embed logic will fail, recurssing until it reaches it's limit.
+            // For now we just bail early.
+            None => return Ok(self.make_link_to_file(note_ref, &context)),
+        };
 
         if path.is_none() {
             // TODO: Extract into configurable function.
