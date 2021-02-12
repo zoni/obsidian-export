@@ -26,7 +26,7 @@ type MarkdownTree<'a> = Vec<Event<'a>>;
 
 lazy_static! {
     static ref OBSIDIAN_NOTE_LINK_RE: Regex =
-        Regex::new(r"^(?P<file>[^#|]+)(#(?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap();
+        Regex::new(r"^(?P<file>[^#|]+)??(#(?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap();
 }
 const PERCENTENCODE_CHARS: &AsciiSet = &CONTROLS.add(b' ').add(b'(').add(b')').add(b'%');
 const NOTE_RECURSION_LIMIT: usize = 10;
@@ -121,7 +121,8 @@ struct Context {
 /// ObsidianNoteReference represents the structure of a `[[note]]` or `![[embed]]` reference.
 struct ObsidianNoteReference<'a> {
     /// The file (note name or partial path) being referenced.
-    file: &'a str,
+    /// This will be None in the case that the reference is to a section within the same document
+    file: Option<&'a str>,
     /// If specific, a specific section/heading being referenced.
     section: Option<&'a str>,
     /// If specific, the custom label/text which was specified.
@@ -186,10 +187,7 @@ impl<'a> ObsidianNoteReference<'a> {
         let captures = OBSIDIAN_NOTE_LINK_RE
             .captures(&text)
             .expect("note link regex didn't match - bad input?");
-        let file = captures
-            .name("file")
-            .expect("Obsidian links should always reference a file")
-            .as_str();
+        let file = captures.name("file").map(|v| v.as_str());
         let label = captures.name("label").map(|v| v.as_str());
         let section = captures.name("section").map(|v| v.as_str());
 
@@ -210,9 +208,12 @@ impl<'a> fmt::Display for ObsidianNoteReference<'a> {
         let label = self
             .label
             .map(|v| v.to_string())
-            .unwrap_or_else(|| match self.section {
-                Some(section) => format!("{} > {}", self.file, section),
-                None => self.file.to_string(),
+            .unwrap_or_else(|| match (self.file, self.section) {
+                (Some(file), Some(section)) => format!("{} > {}", file, section),
+                (Some(file), None) => file.to_string(),
+                (None, Some(section)) => section.to_string(),
+
+                _ => panic!("Reference exists without file or section!"),
             })
             .to_string();
         write!(f, "{}", label)
@@ -458,12 +459,22 @@ impl<'a> Exporter<'a> {
     fn embed_file<'b>(&self, link_text: &'a str, context: &'a Context) -> Result<MarkdownTree<'a>> {
         let note_ref = ObsidianNoteReference::from_str(link_text);
 
-        let path = lookup_filename_in_vault(note_ref.file, &self.vault_contents.as_ref().unwrap());
+        let path = match note_ref.file {
+            Some(file) => lookup_filename_in_vault(file, &self.vault_contents.as_ref().unwrap()),
+
+            // If we have None file it is either to a section or id within the same file and thus
+            // the current embed logic will fail, recurssing until it reaches it's limit.
+            // For now we just bail early.
+            None => return Ok(self.make_link_to_file(note_ref, &context)),
+        };
+
         if path.is_none() {
             // TODO: Extract into configurable function.
             eprintln!(
                 "Warning: Unable to find embedded note\n\tReference: '{}'\n\tSource: '{}'\n",
-                note_ref.file,
+                note_ref
+                    .file
+                    .unwrap_or_else(|| context.current_file().to_str().unwrap()),
                 context.current_file().display(),
             );
             return Ok(vec![]);
@@ -525,13 +536,18 @@ impl<'a> Exporter<'a> {
         reference: ObsidianNoteReference<'b>,
         context: &Context,
     ) -> MarkdownTree<'b> {
-        let target_file =
-            lookup_filename_in_vault(reference.file, &self.vault_contents.as_ref().unwrap());
+        let target_file = reference
+            .file
+            .map(|file| lookup_filename_in_vault(file, &self.vault_contents.as_ref().unwrap()))
+            .unwrap_or_else(|| Some(context.current_file()));
+
         if target_file.is_none() {
             // TODO: Extract into configurable function.
             eprintln!(
                 "Warning: Unable to find referenced note\n\tReference: '{}'\n\tSource: '{}'\n",
-                reference.file,
+                reference
+                    .file
+                    .unwrap_or_else(|| context.current_file().to_str().unwrap()),
                 context.current_file().display(),
             );
             return vec![
