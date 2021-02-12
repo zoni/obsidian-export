@@ -28,7 +28,7 @@ pub struct WalkOptions<'a> {
     /// it should be included or not.
     ///
     /// This is passed to [`ignore::WalkBuilder::filter_entry`].
-    pub filter_fn: Option<Box<&'static FilterFn>>,
+    pub filter_fn: Option<&'static FilterFn>,
 }
 
 impl<'a> fmt::Debug for WalkOptions<'a> {
