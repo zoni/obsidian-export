@@ -133,7 +133,7 @@ impl Context {
     /// Create a new `Context`
     fn new(file: PathBuf) -> Context {
         Context {
-            file_tree: vec![file.clone()],
+            file_tree: vec![file],
             frontmatter_strategy: FrontmatterStrategy::Auto,
         }
     }
@@ -205,17 +205,16 @@ impl<'a> ObsidianNoteReference<'a> {
 
 impl<'a> fmt::Display for ObsidianNoteReference<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let label = self
-            .label
-            .map(|v| v.to_string())
-            .unwrap_or_else(|| match (self.file, self.section) {
-                (Some(file), Some(section)) => format!("{} > {}", file, section),
-                (Some(file), None) => file.to_string(),
-                (None, Some(section)) => section.to_string(),
+        let label =
+            self.label
+                .map(|v| v.to_string())
+                .unwrap_or_else(|| match (self.file, self.section) {
+                    (Some(file), Some(section)) => format!("{} > {}", file, section),
+                    (Some(file), None) => file.to_string(),
+                    (None, Some(section)) => section.to_string(),
 
-                _ => panic!("Reference exists without file or section!"),
-            })
-            .to_string();
+                    _ => panic!("Reference exists without file or section!"),
+                });
         write!(f, "{}", label)
     }
 }
@@ -346,10 +345,10 @@ impl<'a> Exporter<'a> {
         let write_frontmatter = match frontmatter_strategy {
             FrontmatterStrategy::Always => true,
             FrontmatterStrategy::Never => false,
-            FrontmatterStrategy::Auto => frontmatter != "",
+            FrontmatterStrategy::Auto => !frontmatter.is_empty(),
         };
         if write_frontmatter {
-            if frontmatter != "" && !frontmatter.ends_with('\n') {
+            if !frontmatter.is_empty() && !frontmatter.ends_with('\n') {
                 frontmatter.push('\n');
             }
             outfile
@@ -456,7 +455,7 @@ impl<'a> Exporter<'a> {
     // - If the file being embedded is a note, it's content is included at the point of embed.
     // - If the file is an image, an image tag is generated.
     // - For other types of file, a regular link is created instead.
-    fn embed_file<'b>(&self, link_text: &'a str, context: &'a Context) -> Result<MarkdownTree<'a>> {
+    fn embed_file(&self, link_text: &'a str, context: &'a Context) -> Result<MarkdownTree<'a>> {
         let note_ref = ObsidianNoteReference::from_str(link_text);
 
         let path = match note_ref.file {
@@ -579,7 +578,7 @@ impl<'a> Exporter<'a> {
 
         let link_tag = pulldown_cmark::Tag::Link(
             pulldown_cmark::LinkType::Inline,
-            CowStr::from(link.to_string()),
+            CowStr::from(link),
             CowStr::from(""),
         );
 

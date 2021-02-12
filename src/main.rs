@@ -49,15 +49,17 @@ fn frontmatter_strategy_from_str(input: &str) -> Result<FrontmatterStrategy> {
     }
 }
 
-fn main() -> Result<()> {
+fn main() {
     let args = Opts::parse_args_default_or_exit();
     let source = args.source.unwrap();
     let destination = args.destination.unwrap();
 
-    let mut walk_options = WalkOptions::default();
-    walk_options.ignore_filename = &args.ignore_file;
-    walk_options.ignore_hidden = !args.hidden;
-    walk_options.honor_gitignore = !args.no_git;
+    let walk_options = WalkOptions {
+        ignore_filename: &args.ignore_file,
+        ignore_hidden: !args.hidden,
+        honor_gitignore: !args.no_git,
+        ..Default::default()
+    };
 
     let mut exporter = Exporter::new(source, destination);
     exporter.frontmatter_strategy(args.frontmatter_strategy);
@@ -93,6 +95,4 @@ fn main() -> Result<()> {
         };
         std::process::exit(1);
     };
-
-    Ok(())
 }
