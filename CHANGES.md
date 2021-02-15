@@ -1,5 +1,90 @@
 # Changelog
 
+## v0.6.0 (2021-02-15)
+
+### New
+
+* Add `--version` flag. [Nick Groenen]
+
+### Changes
+
+* Don't Box FilterFn in WalkOptions. [Nick Groenen]
+
+  Previously, `filter_fn` on the `WalkOptions` struct looked like:
+
+      pub filter_fn: Option<Box<&'static FilterFn>>,
+
+  This boxing was unneccesary and has been changed to:
+
+      pub filter_fn: Option<&'static FilterFn>,
+
+  This will only affect people who use obsidian-export as a library in
+  other Rust programs, not users of the CLI.
+
+  For those library users, they no longer need to supply `FilterFn`
+  wrapped in a Box.
+
+### Fixes
+
+* Recognize notes beginning with underscores. [Nick Groenen]
+
+  Notes with an underscore would fail to be recognized within Obsidian
+  `[[_WikiLinks]]` due to the assumption that the underlying Markdown
+  parser (pulldown_cmark) would emit the text between `[[` and `]]` as
+  a single event.
+
+  The note parser has now been rewritten to use a more reliable state
+  machine which correctly recognizes this corner-case (and likely some
+  others).
+
+* Support self-references. [Joshua Coles]
+
+  This ensures links to headings within the same note (`[[#Heading]]`)
+  resolve correctly.
+
+### Other
+
+* Avoid redundant "Release" in GitHub release titles. [Nick Groenen]
+
+* Add failing testcase for files with underscores. [Nick Groenen]
+
+* Add unit tests for display of ObsidianNoteReference. [Nick Groenen]
+
+* Add some unit tests for ObsidianNoteReference::from_str. [Nick Groenen]
+
+* Also run tests on pull requests. [Nick Groenen]
+
+* Apply clippy suggestions following rust 1.50.0. [Nick Groenen]
+
+* Fix infinite recursion bug with references to current file. [Joshua Coles]
+
+* Add tests for self-references. [Joshua Coles]
+
+  Note as there is no support for block references at the moment, the generated link goes nowhere, however it is to a reasonable ID
+
+* Bump tempfile from 3.1.0 to 3.2.0. [dependabot[bot]]
+
+  Bumps [tempfile](https://github.com/Stebalien/tempfile) from 3.1.0 to 3.2.0.
+  - [Release notes](https://github.com/Stebalien/tempfile/releases)
+  - [Changelog](https://github.com/Stebalien/tempfile/blob/master/NEWS)
+  - [Commits](https://github.com/Stebalien/tempfile/commits)
+
+* Bump eyre from 0.6.3 to 0.6.5. [dependabot[bot]]
+
+  Bumps [eyre](https://github.com/yaahc/eyre) from 0.6.3 to 0.6.5.
+  - [Release notes](https://github.com/yaahc/eyre/releases)
+  - [Changelog](https://github.com/yaahc/eyre/blob/v0.6.5/CHANGELOG.md)
+  - [Commits](https://github.com/yaahc/eyre/compare/v0.6.3...v0.6.5)
+
+* Bump regex from 1.4.2 to 1.4.3. [dependabot[bot]]
+
+  Bumps [regex](https://github.com/rust-lang/regex) from 1.4.2 to 1.4.3.
+  - [Release notes](https://github.com/rust-lang/regex/releases)
+  - [Changelog](https://github.com/rust-lang/regex/blob/master/CHANGELOG.md)
+  - [Commits](https://github.com/rust-lang/regex/compare/1.4.2...1.4.3)
+
+
+
 ## v0.5.1 (2021-01-10)
 
 ### Fixes
