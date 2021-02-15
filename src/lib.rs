@@ -117,7 +117,7 @@ struct Context {
     frontmatter_strategy: FrontmatterStrategy,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 /// ObsidianNoteReference represents the structure of a `[[note]]` or `![[embed]]` reference.
 struct ObsidianNoteReference<'a> {
     /// The file (note name or partial path) being referenced.
@@ -759,5 +759,54 @@ fn codeblock_kind_to_owned<'a>(codeblock_kind: CodeBlockKind) -> CodeBlockKind<'
     match codeblock_kind {
         CodeBlockKind::Indented => CodeBlockKind::Indented,
         CodeBlockKind::Fenced(cowstr) => CodeBlockKind::Fenced(CowStr::from(cowstr.into_string())),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_note_refs_from_strings() {
+        assert_eq!(
+            ObsidianNoteReference::from_str("Just a note"),
+            ObsidianNoteReference {
+                file: Some("Just a note"),
+                label: None,
+                section: None,
+            }
+        );
+        assert_eq!(
+            ObsidianNoteReference::from_str("A note?"),
+            ObsidianNoteReference {
+                file: Some("A note?"),
+                label: None,
+                section: None,
+            }
+        );
+        assert_eq!(
+            ObsidianNoteReference::from_str("Note#with heading"),
+            ObsidianNoteReference {
+                file: Some("Note"),
+                label: None,
+                section: Some("with heading"),
+            }
+        );
+        assert_eq!(
+            ObsidianNoteReference::from_str("Note#Heading|Label"),
+            ObsidianNoteReference {
+                file: Some("Note"),
+                label: Some("Label"),
+                section: Some("Heading"),
+            }
+        );
+        assert_eq!(
+            ObsidianNoteReference::from_str("#Heading|Label"),
+            ObsidianNoteReference {
+                file: None,
+                label: Some("Label"),
+                section: Some("Heading"),
+            }
+        );
     }
 }
