@@ -129,6 +129,56 @@ struct ObsidianNoteReference<'a> {
     label: Option<&'a str>,
 }
 
+#[derive(PartialEq)]
+/// RefParserState enumerates all the possible parsing states [RefParser] may enter.
+enum RefParserState {
+    NoState,
+    ExpectSecondOpenBracket,
+    ExpectRefText,
+    ExpectRefTextOrCloseBracket,
+    ExpectFinalCloseBracket,
+    Resetting,
+}
+
+/// RefType indicates whether a note reference is a link (`[[note]]`) or embed (`![[embed]]`).
+enum RefType {
+    Link,
+    Embed,
+}
+
+/// RefParser holds state which is used to parse Obsidian WikiLinks (`[[note]]`, `![[embed]]`).
+struct RefParser {
+    state: RefParserState,
+    ref_type: Option<RefType>,
+    // References sometimes come in through multiple events. One example of this is when notes
+    // start with an underscore (_), presumably because this is also the literal which starts
+    // italic and bold text.
+    //
+    // ref_text concatenates the values from these partial events so that there's a fully-formed
+    // string to work with by the time the final `]]` is encountered.
+    ref_text: String,
+}
+
+impl RefParser {
+    fn new() -> RefParser {
+        RefParser {
+            state: RefParserState::NoState,
+            ref_type: None,
+            ref_text: String::new(),
+        }
+    }
+
+    fn transition(&mut self, new_state: RefParserState) {
+        self.state = new_state;
+    }
+
+    fn reset(&mut self) {
+        self.state = RefParserState::NoState;
+        self.ref_type = None;
+        self.ref_text.clear();
+    }
+}
+
 impl Context {
     /// Create a new `Context`
     fn new(file: PathBuf) -> Context {
@@ -381,72 +431,100 @@ impl<'a> Exporter<'a> {
         parser_options.insert(Options::ENABLE_STRIKETHROUGH);
         parser_options.insert(Options::ENABLE_TASKLISTS);
 
-        // Use of ENABLE_SMART_PUNCTUATION causes character replacements which breaks up the single
-        // Event::Text element that is emitted between `[[` and `]]` into an unpredictable number of
-        // additional elements. This completely throws off the current parsing strategy and is
-        // unsupported. If a user were to want this, a strategy would be to do a second-stage pass over
-        // the rewritten markdown just before feeding to pulldown_cmark_to_cmark.
-        //parser_options.insert(Options::ENABLE_SMART_PUNCTUATION);
-
-        let mut parser = Parser::new_ext(&content, parser_options);
+        let mut ref_parser = RefParser::new();
         let mut tree = vec![];
+        // Most of the time, a reference triggers 5 events: [ or ![, [, <text>, ], ]
         let mut buffer = Vec::with_capacity(5);
 
-        while let Some(event) = parser.next() {
-            match event {
-                Event::Text(CowStr::Borrowed("[")) | Event::Text(CowStr::Borrowed("![")) => {
-                    buffer.push(event);
-                    // A lone '[' or a '![' Text event signifies the possible start of a linked or
-                    // embedded note. However, we cannot be sure unless it's also followed by another
-                    // '[', the note reference itself and closed by a double ']'. To determine whether
-                    // that's the case, we need to read ahead so we can backtrack later if needed.
-                    for _ in 1..5 {
-                        if let Some(event) = parser.next() {
-                            buffer.push(event);
-                        }
-                    }
-                    if buffer.len() != 5
-                    // buffer[0] has '[' or '![', but we already know this
-                    || buffer[1] != Event::Text(CowStr::Borrowed("["))
-                    || buffer[3] != Event::Text(CowStr::Borrowed("]"))
-                    || buffer[4] != Event::Text(CowStr::Borrowed("]"))
-                    {
-                        tree.append(&mut buffer);
-                        buffer.clear();
-                        continue;
-                    }
-
-                    if let Event::Text(CowStr::Borrowed(text)) = buffer[2] {
-                        match buffer[0] {
-                            Event::Text(CowStr::Borrowed("[")) => {
-                                let mut elements = self.make_link_to_file(
-                                    ObsidianNoteReference::from_str(&text),
-                                    context,
-                                );
-                                tree.append(&mut elements);
-                                buffer.clear();
-                                continue;
-                            }
-                            Event::Text(CowStr::Borrowed("![")) => {
-                                let mut elements = self.embed_file(&text, &context)?;
-                                tree.append(&mut elements);
-                                buffer.clear();
-                                continue;
-                            }
-                            // This arm can never be reached due to the outer match against event, but
-                            // the compiler (currently) cannot infer this.
-                            _ => {}
-                        }
-                    }
-                }
-                _ => tree.push(event),
-            }
-            if !buffer.is_empty() {
+        for event in Parser::new_ext(&content, parser_options) {
+            if ref_parser.state == RefParserState::Resetting {
                 tree.append(&mut buffer);
                 buffer.clear();
+                ref_parser.reset();
+            }
+            buffer.push(event.clone());
+            match ref_parser.state {
+                RefParserState::NoState => {
+                    match event {
+                        Event::Text(CowStr::Borrowed("![")) => {
+                            ref_parser.ref_type = Some(RefType::Embed);
+                            ref_parser.transition(RefParserState::ExpectSecondOpenBracket);
+                        }
+                        Event::Text(CowStr::Borrowed("[")) => {
+                            ref_parser.ref_type = Some(RefType::Link);
+                            ref_parser.transition(RefParserState::ExpectSecondOpenBracket);
+                        }
+                        _ => {
+                            tree.push(event);
+                            buffer.clear();
+                        },
+                    };
+                }
+                RefParserState::ExpectSecondOpenBracket => match event {
+                    Event::Text(CowStr::Borrowed("[")) => {
+                        ref_parser.transition(RefParserState::ExpectRefText);
+                    }
+                    _ => {
+                        ref_parser.transition(RefParserState::Resetting);
+                    }
+                },
+                RefParserState::ExpectRefText => match event {
+                    Event::Text(CowStr::Borrowed("]")) => {
+                        ref_parser.transition(RefParserState::Resetting);
+                    }
+                    Event::Text(text) => {
+                        ref_parser.ref_text.push_str(&text);
+                        ref_parser.transition(RefParserState::ExpectRefTextOrCloseBracket);
+                    }
+                    _ => {
+                        ref_parser.transition(RefParserState::Resetting);
+                    }
+                },
+                RefParserState::ExpectRefTextOrCloseBracket => match event {
+                    Event::Text(CowStr::Borrowed("]")) => {
+                        ref_parser.transition(RefParserState::ExpectFinalCloseBracket);
+                    }
+                    Event::Text(text) => {
+                        ref_parser.ref_text.push_str(&text);
+                    }
+                    _ => {
+                        ref_parser.transition(RefParserState::Resetting);
+                    }
+                },
+                RefParserState::ExpectFinalCloseBracket => match event {
+                    Event::Text(CowStr::Borrowed("]")) => match ref_parser.ref_type {
+                        Some(RefType::Link) => {
+                            let mut elements = self.make_link_to_file(
+                                ObsidianNoteReference::from_str(
+                                    ref_parser.ref_text.clone().as_ref()
+                                ),
+                                context,
+                            );
+                            tree.append(&mut elements);
+                            buffer.clear();
+                            ref_parser.transition(RefParserState::Resetting);
+                        }
+                        Some(RefType::Embed) => {
+                            let mut elements = self.embed_file(
+                                ref_parser.ref_text.clone().as_ref(),
+                                context
+                            )?;
+                            tree.append(&mut elements);
+                            buffer.clear();
+                            ref_parser.transition(RefParserState::Resetting);
+                        }
+                        None => panic!("In state ExpectFinalCloseBracket but ref_type is None"),
+                    },
+                    _ => {
+                        ref_parser.transition(RefParserState::Resetting);
+                    }
+                },
+                RefParserState::Resetting => panic!("Reached Resetting state, but it should have been handled prior to this match block"),
             }
         }
-        tree.append(&mut buffer);
+        if !buffer.is_empty() {
+            tree.append(&mut buffer);
+        }
         Ok(tree.into_iter().map(event_to_owned).collect())
     }
 
@@ -455,7 +533,7 @@ impl<'a> Exporter<'a> {
     // - If the file being embedded is a note, it's content is included at the point of embed.
     // - If the file is an image, an image tag is generated.
     // - For other types of file, a regular link is created instead.
-    fn embed_file(&self, link_text: &'a str, context: &'a Context) -> Result<MarkdownTree<'a>> {
+    fn embed_file<'b>(&self, link_text: &'a str, context: &'a Context) -> Result<MarkdownTree<'b>> {
         let note_ref = ObsidianNoteReference::from_str(link_text);
 
         let path = match note_ref.file {
@@ -530,11 +608,11 @@ impl<'a> Exporter<'a> {
         Ok(tree)
     }
 
-    fn make_link_to_file<'b>(
+    fn make_link_to_file<'b, 'c>(
         &self,
         reference: ObsidianNoteReference<'b>,
         context: &Context,
-    ) -> MarkdownTree<'b> {
+    ) -> MarkdownTree<'c> {
         let target_file = reference
             .file
             .map(|file| lookup_filename_in_vault(file, &self.vault_contents.as_ref().unwrap()))
