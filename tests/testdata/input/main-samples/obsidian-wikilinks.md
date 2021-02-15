@@ -8,6 +8,8 @@ Link to [[pure-markdown-examples#Heading 1|pure markdown examples]].
 
 Link to [[uppercased-note]].
 
+Link to [[_underscored-note]].
+
 Link within backticks: `[[pure-markdown-examples]]`
 
 ```
