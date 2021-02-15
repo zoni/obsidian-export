@@ -809,4 +809,53 @@ mod tests {
             }
         );
     }
+
+    #[test]
+    fn test_display_of_note_refs() {
+        assert_eq!(
+            "Note",
+            ObsidianNoteReference {
+                file: Some("Note"),
+                label: None,
+                section: None,
+            }
+            .display()
+        );
+        assert_eq!(
+            "Note > Heading",
+            ObsidianNoteReference {
+                file: Some("Note"),
+                label: None,
+                section: Some("Heading"),
+            }
+            .display()
+        );
+        assert_eq!(
+            "Heading",
+            ObsidianNoteReference {
+                file: None,
+                label: None,
+                section: Some("Heading"),
+            }
+            .display()
+        );
+        assert_eq!(
+            "Label",
+            ObsidianNoteReference {
+                file: Some("Note"),
+                label: Some("Label"),
+                section: Some("Heading"),
+            }
+            .display()
+        );
+        assert_eq!(
+            "Label",
+            ObsidianNoteReference {
+                file: None,
+                label: Some("Label"),
+                section: Some("Heading"),
+            }
+            .display()
+        );
+    }
 }
