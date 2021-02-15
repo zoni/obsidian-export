@@ -1,12 +1,17 @@
 use eyre::{eyre, Result};
 use gumdrop::Options;
 use obsidian_export::{ExportError, Exporter, FrontmatterStrategy, WalkOptions};
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
+
+const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Options)]
 struct Opts {
     #[options(help = "Display program help")]
     help: bool,
+
+    #[options(help = "Display version information")]
+    version: bool,
 
     #[options(help = "Source file containing reference", free, required)]
     source: Option<PathBuf>,
@@ -50,6 +55,14 @@ fn frontmatter_strategy_from_str(input: &str) -> Result<FrontmatterStrategy> {
 }
 
 fn main() {
+    // Due to the use of free arguments in Opts, we must bypass Gumdrop to determine whether the
+    // version flag was specified. Without this, "missing required free argument" would get printed
+    // when no other args are specified.
+    if env::args().any(|arg| arg == "-v" || arg == "--version") {
+        println!("obsidian-export {}", VERSION);
+        std::process::exit(0);
+    }
+
     let args = Opts::parse_args_default_or_exit();
     let source = args.source.unwrap();
     let destination = args.destination.unwrap();
