@@ -28,7 +28,7 @@ lazy_static! {
     static ref OBSIDIAN_NOTE_LINK_RE: Regex =
         Regex::new(r"^(?P<file>[^#|]+)??(#(?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap();
 }
-const PERCENTENCODE_CHARS: &AsciiSet = &CONTROLS.add(b' ').add(b'(').add(b')').add(b'%');
+const PERCENTENCODE_CHARS: &AsciiSet = &CONTROLS.add(b' ').add(b'(').add(b')').add(b'%').add(b'?');
 const NOTE_RECURSION_LIMIT: usize = 10;
 
 #[non_exhaustive]
