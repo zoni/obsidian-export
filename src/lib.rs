@@ -1,16 +1,25 @@
+pub extern crate pulldown_cmark;
+pub extern crate serde_yaml;
+
 #[macro_use]
 extern crate lazy_static;
 
+mod context;
+mod frontmatter;
+mod references;
 mod walker;
 
+pub use context::Context;
+pub use frontmatter::{Frontmatter, FrontmatterStrategy};
 pub use walker::{vault_contents, WalkOptions};
 
+use frontmatter::{frontmatter_from_str, frontmatter_to_str};
 use pathdiff::diff_paths;
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use pulldown_cmark::{CodeBlockKind, CowStr, Event, Options, Parser, Tag};
 use pulldown_cmark_to_cmark::cmark_with_options;
 use rayon::prelude::*;
-use regex::Regex;
+use references::*;
 use slug::slugify;
 use snafu::{ResultExt, Snafu};
 use std::ffi::OsString;
@@ -21,13 +30,98 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::str;
 
-type Result<T, E = ExportError> = std::result::Result<T, E>;
-type MarkdownTree<'a> = Vec<Event<'a>>;
+/// A series of markdown [Event]s that are generated while traversing an Obsidian markdown note.
+pub type MarkdownEvents<'a> = Vec<Event<'a>>;
 
-lazy_static! {
-    static ref OBSIDIAN_NOTE_LINK_RE: Regex =
-        Regex::new(r"^(?P<file>[^#|]+)??(#(?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap();
-}
+/// A post-processing function that is to be called after an Obsidian note has been fully parsed and
+/// converted to regular markdown syntax.
+///
+/// Postprocessors are called in the order they've been added through [Exporter::add_postprocessor]
+/// just before notes are written out to their final destination.
+/// They may be used to achieve the following:
+///
+/// 1. Modify a note's [Context], for example to change the destination filename or update its [Frontmatter] (see [Context::frontmatter]).
+/// 2. Change a note's contents by altering [MarkdownEvents].
+/// 3. Prevent later postprocessors from running ([PostprocessorResult::StopHere]) or cause a note
+///    to be skipped entirely ([PostprocessorResult::StopAndSkipNote]).
+///
+/// # Examples
+///
+/// ## Update frontmatter
+///
+/// This example shows how to make changes a note's frontmatter. In this case, the postprocessor is
+/// defined inline as a closure.
+///
+/// ```
+/// use obsidian_export::{Context, Exporter, MarkdownEvents, PostprocessorResult};
+/// use obsidian_export::pulldown_cmark::{CowStr, Event};
+/// use obsidian_export::serde_yaml::Value;
+/// # use std::path::PathBuf;
+/// # use tempfile::TempDir;
+///
+/// # let tmp_dir = TempDir::new().expect("failed to make tempdir");
+/// # let source = PathBuf::from("tests/testdata/input/postprocessors");
+/// # let destination = tmp_dir.path().to_path_buf();
+/// let mut exporter = Exporter::new(source, destination);
+///
+/// // add_postprocessor registers a new postprocessor. In this example we use a closure.
+/// exporter.add_postprocessor(&|mut context, events| {
+///     // This is the key we'll insert into the frontmatter. In this case, the string "foo".
+///     let key = Value::String("foo".to_string());
+///     // This is the value we'll insert into the frontmatter. In this case, the string "bar".
+///     let value = Value::String("baz".to_string());
+///
+///     // Frontmatter can be updated in-place, so we can call insert on it directly.
+///     context.frontmatter.insert(key, value);
+///
+///     // Postprocessors must return their (modified) context, the markdown events that make
+///     // up the note and a next action to take.
+///     (context, events, PostprocessorResult::Continue)
+/// });
+///
+/// exporter.run().unwrap();
+/// ```
+///
+/// ## Change note contents
+///
+/// In this example a note's markdown content is changed by iterating over the [MarkdownEvents] and
+/// changing the text when we encounter a [text element][Event::Text].
+///
+/// Instead of using a closure like above, this example shows how to use a separate function
+/// definition.
+/// ```
+/// # use obsidian_export::{Context, Exporter, MarkdownEvents, PostprocessorResult};
+/// # use pulldown_cmark::{CowStr, Event};
+/// # use std::path::PathBuf;
+/// # use tempfile::TempDir;
+/// #
+/// /// This postprocessor replaces any instance of "foo" with "bar" in the note body.
+/// fn foo_to_bar(
+///     context: Context,
+///     events: MarkdownEvents,
+/// ) -> (Context, MarkdownEvents, PostprocessorResult) {
+///     let events = events
+///         .into_iter()
+///         .map(|event| match event {
+///             Event::Text(text) => Event::Text(CowStr::from(text.replace("foo", "bar"))),
+///             event => event,
+///         })
+///         .collect();
+///     (context, events, PostprocessorResult::Continue)
+/// }
+///
+/// # let tmp_dir = TempDir::new().expect("failed to make tempdir");
+/// # let source = PathBuf::from("tests/testdata/input/postprocessors");
+/// # let destination = tmp_dir.path().to_path_buf();
+/// # let mut exporter = Exporter::new(source, destination);
+/// exporter.add_postprocessor(&foo_to_bar);
+/// # exporter.run().unwrap();
+/// ```
+
+pub type Postprocessor =
+    dyn Fn(Context, MarkdownEvents) -> (Context, MarkdownEvents, PostprocessorResult) + Send + Sync;
+type Result<T, E = ExportError> = std::result::Result<T, E>;
+
 const PERCENTENCODE_CHARS: &AsciiSet = &CONTROLS.add(b' ').add(b'(').add(b')').add(b'%').add(b'?');
 const NOTE_RECURSION_LIMIT: usize = 10;
 
@@ -80,21 +174,34 @@ pub enum ExportError {
         #[snafu(source(from(ExportError, Box::new)))]
         source: Box<ExportError>,
     },
+
+    #[snafu(display("Failed to decode YAML frontmatter in '{}'", path.display()))]
+    FrontMatterDecodeError {
+        path: PathBuf,
+        #[snafu(source(from(serde_yaml::Error, Box::new)))]
+        source: Box<serde_yaml::Error>,
+    },
+
+    #[snafu(display("Failed to encode YAML frontmatter for '{}'", path.display()))]
+    FrontMatterEncodeError {
+        path: PathBuf,
+        #[snafu(source(from(serde_yaml::Error, Box::new)))]
+        source: Box<serde_yaml::Error>,
+    },
 }
 
-#[derive(Debug, Clone, Copy)]
-/// FrontmatterStrategy determines how frontmatter is handled in Markdown files.
-pub enum FrontmatterStrategy {
-    /// Copy frontmatter when a note has frontmatter defined.
-    Auto,
-    /// Always add frontmatter header, including empty frontmatter when none was originally
-    /// specified.
-    Always,
-    /// Never add any frontmatter to notes.
-    Never,
+#[derive(Debug, Clone, Copy, PartialEq)]
+/// Emitted by [Postprocessor]s to signal the next action to take.
+pub enum PostprocessorResult {
+    /// Continue with the next post-processor (if any).
+    Continue,
+    /// Use this note, but don't run any more post-processors after this one.
+    StopHere,
+    /// Skip this note (don't export it) and don't run any more post-processors.
+    StopAndSkipNote,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 /// Exporter provides the main interface to this library.
 ///
 /// Users are expected to create an Exporter using [`Exporter::new`], optionally followed by
@@ -108,164 +215,26 @@ pub struct Exporter<'a> {
     vault_contents: Option<Vec<PathBuf>>,
     walk_options: WalkOptions<'a>,
     process_embeds_recursively: bool,
+    postprocessors: Vec<&'a Postprocessor>,
 }
 
-#[derive(Debug, Clone)]
-/// Context holds parser metadata for the file/note currently being parsed.
-struct Context {
-    file_tree: Vec<PathBuf>,
-    frontmatter_strategy: FrontmatterStrategy,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-/// ObsidianNoteReference represents the structure of a `[[note]]` or `![[embed]]` reference.
-struct ObsidianNoteReference<'a> {
-    /// The file (note name or partial path) being referenced.
-    /// This will be None in the case that the reference is to a section within the same document
-    file: Option<&'a str>,
-    /// If specific, a specific section/heading being referenced.
-    section: Option<&'a str>,
-    /// If specific, the custom label/text which was specified.
-    label: Option<&'a str>,
-}
-
-#[derive(PartialEq)]
-/// RefParserState enumerates all the possible parsing states [RefParser] may enter.
-enum RefParserState {
-    NoState,
-    ExpectSecondOpenBracket,
-    ExpectRefText,
-    ExpectRefTextOrCloseBracket,
-    ExpectFinalCloseBracket,
-    Resetting,
-}
-
-/// RefType indicates whether a note reference is a link (`[[note]]`) or embed (`![[embed]]`).
-enum RefType {
-    Link,
-    Embed,
-}
-
-/// RefParser holds state which is used to parse Obsidian WikiLinks (`[[note]]`, `![[embed]]`).
-struct RefParser {
-    state: RefParserState,
-    ref_type: Option<RefType>,
-    // References sometimes come in through multiple events. One example of this is when notes
-    // start with an underscore (_), presumably because this is also the literal which starts
-    // italic and bold text.
-    //
-    // ref_text concatenates the values from these partial events so that there's a fully-formed
-    // string to work with by the time the final `]]` is encountered.
-    ref_text: String,
-}
-
-impl RefParser {
-    fn new() -> RefParser {
-        RefParser {
-            state: RefParserState::NoState,
-            ref_type: None,
-            ref_text: String::new(),
-        }
-    }
-
-    fn transition(&mut self, new_state: RefParserState) {
-        self.state = new_state;
-    }
-
-    fn reset(&mut self) {
-        self.state = RefParserState::NoState;
-        self.ref_type = None;
-        self.ref_text.clear();
-    }
-}
-
-impl Context {
-    /// Create a new `Context`
-    fn new(file: PathBuf) -> Context {
-        Context {
-            file_tree: vec![file],
-            frontmatter_strategy: FrontmatterStrategy::Auto,
-        }
-    }
-
-    /// Create a new `Context` which inherits from a parent Context.
-    fn from_parent(context: &Context, child: &PathBuf) -> Context {
-        let mut context = context.clone();
-        context.file_tree.push(child.to_path_buf());
-        context
-    }
-
-    /// Associate a new `FrontmatterStrategy` with this context.
-    fn set_frontmatter_strategy(&mut self, strategy: FrontmatterStrategy) -> &mut Context {
-        self.frontmatter_strategy = strategy;
-        self
-    }
-
-    /// Return the path of the file currently being parsed.
-    fn current_file(&self) -> &PathBuf {
-        self.file_tree
-            .last()
-            .expect("Context not initialized properly, file_tree is empty")
-    }
-
-    /// Return the path of the root file.
-    ///
-    /// Typically this will yield the same element as `current_file`, but when a note is embedded
-    /// within another note, this will return the outer-most note.
-    fn root_file(&self) -> &PathBuf {
-        self.file_tree
-            .first()
-            .expect("Context not initialized properly, file_tree is empty")
-    }
-
-    /// Return the note depth (nesting level) for this context.
-    fn note_depth(&self) -> usize {
-        self.file_tree.len()
-    }
-
-    /// Return the list of files associated with this context.
-    ///
-    /// The first element corresponds to the root file, the final element corresponds to the file
-    /// which is currently being processed (see also `current_file`).
-    fn file_tree(&self) -> Vec<PathBuf> {
-        self.file_tree.clone()
-    }
-}
-
-impl<'a> ObsidianNoteReference<'a> {
-    fn from_str(text: &str) -> ObsidianNoteReference {
-        let captures = OBSIDIAN_NOTE_LINK_RE
-            .captures(&text)
-            .expect("note link regex didn't match - bad input?");
-        let file = captures.name("file").map(|v| v.as_str());
-        let label = captures.name("label").map(|v| v.as_str());
-        let section = captures.name("section").map(|v| v.as_str());
-
-        ObsidianNoteReference {
-            file,
-            label,
-            section,
-        }
-    }
-
-    fn display(&self) -> String {
-        format!("{}", self)
-    }
-}
-
-impl<'a> fmt::Display for ObsidianNoteReference<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let label =
-            self.label
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| match (self.file, self.section) {
-                    (Some(file), Some(section)) => format!("{} > {}", file, section),
-                    (Some(file), None) => file.to_string(),
-                    (None, Some(section)) => section.to_string(),
-
-                    _ => panic!("Reference exists without file or section!"),
-                });
-        write!(f, "{}", label)
+impl<'a> fmt::Debug for Exporter<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("WalkOptions")
+            .field("root", &self.root)
+            .field("destination", &self.destination)
+            .field("frontmatter_strategy", &self.frontmatter_strategy)
+            .field("vault_contents", &self.vault_contents)
+            .field("walk_options", &self.walk_options)
+            .field(
+                "process_embeds_recursively",
+                &self.process_embeds_recursively,
+            )
+            .field(
+                "postprocessors",
+                &format!("<{} postprocessors active>", self.postprocessors.len()),
+            )
+            .finish()
     }
 }
 
@@ -280,6 +249,7 @@ impl<'a> Exporter<'a> {
             walk_options: WalkOptions::default(),
             process_embeds_recursively: true,
             vault_contents: None,
+            postprocessors: vec![],
         }
     }
 
@@ -305,6 +275,12 @@ impl<'a> Exporter<'a> {
     /// original note, instead of embedding it again a link to the note is inserted instead.
     pub fn process_embeds_recursively(&mut self, recursive: bool) -> &mut Exporter<'a> {
         self.process_embeds_recursively = recursive;
+        self
+    }
+
+    /// Append a function to the chain of [postprocessors][Postprocessor] to run on exported Obsidian Markdown notes.
+    pub fn add_postprocessor(&mut self, processor: &'a Postprocessor) -> &mut Exporter<'a> {
+        self.postprocessors.push(processor);
         self
     }
 
@@ -372,58 +348,64 @@ impl<'a> Exporter<'a> {
 
     fn export_note(&self, src: &Path, dest: &Path) -> Result<()> {
         match is_markdown_file(src) {
-            true => self.parse_and_export_obsidian_note(src, dest, self.frontmatter_strategy),
+            true => self.parse_and_export_obsidian_note(src, dest),
             false => copy_file(src, dest),
         }
         .context(FileExportError { path: src })
     }
 
-    fn parse_and_export_obsidian_note(
-        &self,
-        src: &Path,
-        dest: &Path,
-        frontmatter_strategy: FrontmatterStrategy,
-    ) -> Result<()> {
-        let content = fs::read_to_string(&src).context(ReadError { path: src })?;
+    fn parse_and_export_obsidian_note(&self, src: &Path, dest: &Path) -> Result<()> {
+        let mut context = Context::new(src.to_path_buf(), dest.to_path_buf());
 
-        let (mut frontmatter, _content) =
-            matter::matter(&content).unwrap_or(("".to_string(), content.to_string()));
-        frontmatter = frontmatter.trim().to_string();
-        //let mut outfile = create_file(&dest).context(FileIOError { filename: dest })?;
-        let mut outfile = create_file(&dest)?;
-
-        let write_frontmatter = match frontmatter_strategy {
-            FrontmatterStrategy::Always => true,
-            FrontmatterStrategy::Never => false,
-            FrontmatterStrategy::Auto => !frontmatter.is_empty(),
-        };
-        if write_frontmatter {
-            if !frontmatter.is_empty() && !frontmatter.ends_with('\n') {
-                frontmatter.push('\n');
+        let (frontmatter, mut markdown_events) = self.parse_obsidian_note(&src, &context)?;
+        context.frontmatter = frontmatter;
+        for func in &self.postprocessors {
+            let res = func(context, markdown_events);
+            context = res.0;
+            markdown_events = res.1;
+            match res.2 {
+                PostprocessorResult::StopHere => break,
+                PostprocessorResult::StopAndSkipNote => return Ok(()),
+                _ => (),
             }
-            outfile
-                .write_all(format!("---\n{}---\n\n", frontmatter).as_bytes())
-                .context(WriteError { path: &dest })?;
         }
 
-        let mut context = Context::new(src.to_path_buf());
-        context.set_frontmatter_strategy(frontmatter_strategy);
-        let markdown_tree = self.parse_obsidian_note(&src, &context)?;
+        let dest = context.destination;
+        let mut outfile = create_file(&dest)?;
+        let write_frontmatter = match self.frontmatter_strategy {
+            FrontmatterStrategy::Always => true,
+            FrontmatterStrategy::Never => false,
+            FrontmatterStrategy::Auto => !context.frontmatter.is_empty(),
+        };
+        if write_frontmatter {
+            let mut frontmatter_str = frontmatter_to_str(context.frontmatter)
+                .context(FrontMatterEncodeError { path: src })?;
+            frontmatter_str.push('\n');
+            outfile
+                .write_all(frontmatter_str.as_bytes())
+                .context(WriteError { path: &dest })?;
+        }
         outfile
-            .write_all(render_mdtree_to_mdtext(markdown_tree).as_bytes())
+            .write_all(render_mdevents_to_mdtext(markdown_events).as_bytes())
             .context(WriteError { path: &dest })?;
         Ok(())
     }
 
-    fn parse_obsidian_note<'b>(&self, path: &Path, context: &Context) -> Result<MarkdownTree<'b>> {
+    fn parse_obsidian_note<'b>(
+        &self,
+        path: &Path,
+        context: &Context,
+    ) -> Result<(Frontmatter, MarkdownEvents<'b>)> {
         if context.note_depth() > NOTE_RECURSION_LIMIT {
             return Err(ExportError::RecursionLimitExceeded {
                 file_tree: context.file_tree(),
             });
         }
         let content = fs::read_to_string(&path).context(ReadError { path })?;
-        let (_frontmatter, content) =
+        let (frontmatter, content) =
             matter::matter(&content).unwrap_or(("".to_string(), content.to_string()));
+        let frontmatter =
+            frontmatter_from_str(&frontmatter).context(FrontMatterDecodeError { path })?;
 
         let mut parser_options = Options::empty();
         parser_options.insert(Options::ENABLE_TABLES);
@@ -432,13 +414,13 @@ impl<'a> Exporter<'a> {
         parser_options.insert(Options::ENABLE_TASKLISTS);
 
         let mut ref_parser = RefParser::new();
-        let mut tree = vec![];
+        let mut events = vec![];
         // Most of the time, a reference triggers 5 events: [ or ![, [, <text>, ], ]
         let mut buffer = Vec::with_capacity(5);
 
         for event in Parser::new_ext(&content, parser_options) {
             if ref_parser.state == RefParserState::Resetting {
-                tree.append(&mut buffer);
+                events.append(&mut buffer);
                 buffer.clear();
                 ref_parser.reset();
             }
@@ -455,7 +437,7 @@ impl<'a> Exporter<'a> {
                             ref_parser.transition(RefParserState::ExpectSecondOpenBracket);
                         }
                         _ => {
-                            tree.push(event);
+                            events.push(event);
                             buffer.clear();
                         },
                     };
@@ -500,7 +482,7 @@ impl<'a> Exporter<'a> {
                                 ),
                                 context,
                             );
-                            tree.append(&mut elements);
+                            events.append(&mut elements);
                             buffer.clear();
                             ref_parser.transition(RefParserState::Resetting);
                         }
@@ -509,7 +491,7 @@ impl<'a> Exporter<'a> {
                                 ref_parser.ref_text.clone().as_ref(),
                                 context
                             )?;
-                            tree.append(&mut elements);
+                            events.append(&mut elements);
                             buffer.clear();
                             ref_parser.transition(RefParserState::Resetting);
                         }
@@ -523,9 +505,12 @@ impl<'a> Exporter<'a> {
             }
         }
         if !buffer.is_empty() {
-            tree.append(&mut buffer);
+            events.append(&mut buffer);
         }
-        Ok(tree.into_iter().map(event_to_owned).collect())
+        Ok((
+            frontmatter,
+            events.into_iter().map(event_to_owned).collect(),
+        ))
     }
 
     // Generate markdown elements for a file that is embedded within another note.
@@ -533,7 +518,11 @@ impl<'a> Exporter<'a> {
     // - If the file being embedded is a note, it's content is included at the point of embed.
     // - If the file is an image, an image tag is generated.
     // - For other types of file, a regular link is created instead.
-    fn embed_file<'b>(&self, link_text: &'a str, context: &'a Context) -> Result<MarkdownTree<'b>> {
+    fn embed_file<'b>(
+        &self,
+        link_text: &'a str,
+        context: &'a Context,
+    ) -> Result<MarkdownEvents<'b>> {
         let note_ref = ObsidianNoteReference::from_str(link_text);
 
         let path = match note_ref.file {
@@ -561,7 +550,7 @@ impl<'a> Exporter<'a> {
         let child_context = Context::from_parent(context, path);
         let no_ext = OsString::new();
 
-        if !self.process_embeds_recursively && context.file_tree.contains(path) {
+        if !self.process_embeds_recursively && context.file_tree().contains(path) {
             return Ok([
                 vec![Event::Text(CowStr::Borrowed("→ "))],
                 self.make_link_to_file(note_ref, &child_context),
@@ -569,13 +558,13 @@ impl<'a> Exporter<'a> {
             .concat());
         }
 
-        let tree = match path.extension().unwrap_or(&no_ext).to_str() {
+        let events = match path.extension().unwrap_or(&no_ext).to_str() {
             Some("md") => {
-                let mut tree = self.parse_obsidian_note(&path, &child_context)?;
+                let (_frontmatter, mut events) = self.parse_obsidian_note(&path, &child_context)?;
                 if let Some(section) = note_ref.section {
-                    tree = reduce_to_section(tree, section);
+                    events = reduce_to_section(events, section);
                 }
-                tree
+                events
             }
             Some("png") | Some("jpg") | Some("jpeg") | Some("gif") | Some("webp") => {
                 self.make_link_to_file(note_ref, &child_context)
@@ -605,14 +594,14 @@ impl<'a> Exporter<'a> {
             }
             _ => self.make_link_to_file(note_ref, &child_context),
         };
-        Ok(tree)
+        Ok(events)
     }
 
     fn make_link_to_file<'b, 'c>(
         &self,
         reference: ObsidianNoteReference<'b>,
         context: &Context,
-    ) -> MarkdownTree<'c> {
+    ) -> MarkdownEvents<'c> {
         let target_file = reference
             .file
             .map(|file| lookup_filename_in_vault(file, &self.vault_contents.as_ref().unwrap()))
@@ -687,7 +676,7 @@ fn lookup_filename_in_vault<'a>(
     })
 }
 
-fn render_mdtree_to_mdtext(markdown: MarkdownTree) -> String {
+fn render_mdevents_to_mdtext(markdown: MarkdownEvents) -> String {
     let mut buffer = String::new();
     cmark_with_options(
         markdown.iter(),
@@ -736,25 +725,25 @@ fn is_markdown_file(file: &Path) -> bool {
     ext == "md"
 }
 
-/// Reduce a given `MarkdownTree` to just those elements which are children of the given section
+/// Reduce a given `MarkdownEvents` to just those elements which are children of the given section
 /// (heading name).
-fn reduce_to_section<'a, 'b>(tree: MarkdownTree<'a>, section: &'b str) -> MarkdownTree<'a> {
-    let mut new_tree = Vec::with_capacity(tree.len());
+fn reduce_to_section<'a, 'b>(events: MarkdownEvents<'a>, section: &'b str) -> MarkdownEvents<'a> {
+    let mut filtered_events = Vec::with_capacity(events.len());
     let mut target_section_encountered = false;
     let mut currently_in_target_section = false;
     let mut section_level = 0;
     let mut last_level = 0;
     let mut last_tag_was_heading = false;
 
-    for event in tree.into_iter() {
-        new_tree.push(event.clone());
+    for event in events.into_iter() {
+        filtered_events.push(event.clone());
         match event {
             Event::Start(Tag::Heading(level)) => {
                 last_tag_was_heading = true;
                 last_level = level;
                 if currently_in_target_section && level <= section_level {
                     currently_in_target_section = false;
-                    new_tree.pop();
+                    filtered_events.pop();
                 }
             }
             Event::Text(cowstr) => {
@@ -769,20 +758,20 @@ fn reduce_to_section<'a, 'b>(tree: MarkdownTree<'a>, section: &'b str) -> Markdo
                     currently_in_target_section = true;
                     section_level = last_level;
 
-                    let current_event = new_tree.pop().unwrap();
-                    let heading_start_event = new_tree.pop().unwrap();
-                    new_tree.clear();
-                    new_tree.push(heading_start_event);
-                    new_tree.push(current_event);
+                    let current_event = filtered_events.pop().unwrap();
+                    let heading_start_event = filtered_events.pop().unwrap();
+                    filtered_events.clear();
+                    filtered_events.push(heading_start_event);
+                    filtered_events.push(current_event);
                 }
             }
             _ => {}
         }
         if target_section_encountered && !currently_in_target_section {
-            return new_tree;
+            return filtered_events;
         }
     }
-    new_tree
+    filtered_events
 }
 
 fn event_to_owned<'a>(event: Event) -> Event<'a> {
@@ -837,103 +826,5 @@ fn codeblock_kind_to_owned<'a>(codeblock_kind: CodeBlockKind) -> CodeBlockKind<'
     match codeblock_kind {
         CodeBlockKind::Indented => CodeBlockKind::Indented,
         CodeBlockKind::Fenced(cowstr) => CodeBlockKind::Fenced(CowStr::from(cowstr.into_string())),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parse_note_refs_from_strings() {
-        assert_eq!(
-            ObsidianNoteReference::from_str("Just a note"),
-            ObsidianNoteReference {
-                file: Some("Just a note"),
-                label: None,
-                section: None,
-            }
-        );
-        assert_eq!(
-            ObsidianNoteReference::from_str("A note?"),
-            ObsidianNoteReference {
-                file: Some("A note?"),
-                label: None,
-                section: None,
-            }
-        );
-        assert_eq!(
-            ObsidianNoteReference::from_str("Note#with heading"),
-            ObsidianNoteReference {
-                file: Some("Note"),
-                label: None,
-                section: Some("with heading"),
-            }
-        );
-        assert_eq!(
-            ObsidianNoteReference::from_str("Note#Heading|Label"),
-            ObsidianNoteReference {
-                file: Some("Note"),
-                label: Some("Label"),
-                section: Some("Heading"),
-            }
-        );
-        assert_eq!(
-            ObsidianNoteReference::from_str("#Heading|Label"),
-            ObsidianNoteReference {
-                file: None,
-                label: Some("Label"),
-                section: Some("Heading"),
-            }
-        );
-    }
-
-    #[test]
-    fn test_display_of_note_refs() {
-        assert_eq!(
-            "Note",
-            ObsidianNoteReference {
-                file: Some("Note"),
-                label: None,
-                section: None,
-            }
-            .display()
-        );
-        assert_eq!(
-            "Note > Heading",
-            ObsidianNoteReference {
-                file: Some("Note"),
-                label: None,
-                section: Some("Heading"),
-            }
-            .display()
-        );
-        assert_eq!(
-            "Heading",
-            ObsidianNoteReference {
-                file: None,
-                label: None,
-                section: Some("Heading"),
-            }
-            .display()
-        );
-        assert_eq!(
-            "Label",
-            ObsidianNoteReference {
-                file: Some("Note"),
-                label: Some("Label"),
-                section: Some("Heading"),
-            }
-            .display()
-        );
-        assert_eq!(
-            "Label",
-            ObsidianNoteReference {
-                file: None,
-                label: Some("Label"),
-                section: Some("Heading"),
-            }
-            .display()
-        );
     }
 }
