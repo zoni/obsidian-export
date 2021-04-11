@@ -1,0 +1,110 @@
+{
+  "main": {
+    "id": "4f12c2ce3bf9c008",
+    "type": "split",
+    "children": [
+      {
+        "id": "baf68d171a8d5faa",
+        "type": "leaf",
+        "active": true,
+        "state": {
+          "type": "markdown",
+          "state": {
+            "file": "usage.md",
+            "mode": "preview"
+          }
+        }
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "a3c59e1a39a05e01",
+    "type": "split",
+    "children": [
+      {
+        "id": "84a2d59cfa7a87d4",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "2fba2e464cd7bc76",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {}
+            }
+          },
+          {
+            "id": "a39dbfd35009ee0a",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "dd160adb1a186a62",
+    "type": "split",
+    "children": [
+      {
+        "id": "1afb25294a9f458c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "63636433504641d7",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "usage.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              }
+            }
+          },
+          {
+            "id": "f08f9f179747649d",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "usage.md"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "lastOpenFiles": [
+    "usage.md",
+    "index.md",
+    "README.md",
+    "SUMMARY.md",
+    "CHANGES.md",
+    "installation.md",
+    "license.md",
+    "Installation.md",
+    "Usage.md",
+    "License.md"
+  ]
+}

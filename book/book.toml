@@ -1,9 +1,0 @@
-[book]
-authors = ["Nick Groenen"]
-language = "en"
-multilingual = false
-src = "book-src"
-title = "Obsidian Export"
-
-[output.html]
-git-repository-url = "https://github.com/zoni/obsidian-export"

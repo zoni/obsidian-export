@@ -14,8 +14,8 @@ repos:
         args: ["--", "-D", "warnings"]
   - repo: local
     hooks:
-      - id: mdbook
-        name: mdbook
-        entry: book/generate.sh
+      - id: README
+        name: Render README.md
+        entry: docs/generate.sh
         language: script
-        files: ^(README\.md)|(book/.*)
+        files: ^(README\.md)|(docs/.*)

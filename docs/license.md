@@ -1,4 +1,4 @@
-## License
+# License
 
 Obsidian-export is dual-licensed under the [Apache 2.0] and the [MIT] licenses.
 
