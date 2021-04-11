@@ -148,6 +148,67 @@ By default, this will trigger an error and display the chain of notes which caus
 This behavior may be changed by specifying `--no-recursive-embeds`.
 Using this mode, if a note is encountered for a second time while processing the original note, instead of embedding it again a link to the note is inserted instead to break the cycle.
 
+## Relative links with Hugo
+
+The [Hugo](https://gohugo.io) static site generator [does not support relative links to files](https://notes.nick.groenen.me/notes/relative-linking-in-hugo/).
+Instead, it expects you to link to other pages using the [`ref` and `relref` shortcodes](https://gohugo.io/content-management/cross-references/).
+
+As a result of this, notes that have been exported from Obsidian using obsidian-export do not work out of the box because Hugo doesn't resolve these links correctly.
+
+[Markdown Render Hooks](https://gohugo.io/getting-started/configuration-markup#markdown-render-hooks) (only supported using the default `goldmark` renderer) allow you to work around this issue however, making exported notes work with Hugo after a bit of one-time setup work.
+
+Create the file `layouts/_default/_markup/render-link.html` with the following contents:
+
+````
+{{- $url := urls.Parse .Destination -}}
+{{- $scheme := $url.Scheme -}}
+
+<a href="
+  {{- if eq $scheme "" -}}
+    {{- if strings.HasSuffix $url.Path ".md" -}}
+      {{- relref .Page .Destination | safeURL -}}
+    {{- else -}}
+      {{- .Destination | safeURL -}}
+    {{- end -}}
+  {{- else -}}
+    {{- .Destination | safeURL -}}
+  {{- end -}}"
+  {{- with .Title }} title="{{ . | safeHTML }}"{{- end -}}>
+  {{- .Text | safeHTML -}}
+</a>
+
+{{- /* whitespace stripped here to avoid trailing newline in rendered result caused by file EOL */ -}}
+````
+
+And `layouts/_default/_markup/render-image.html` for images:
+
+````
+{{- $url := urls.Parse .Destination -}}
+{{- $scheme := $url.Scheme -}}
+
+<img src="
+  {{- if eq $scheme "" -}}
+    {{- if strings.HasSuffix $url.Path ".md" -}}
+      {{- relref .Page .Destination | safeURL -}}
+    {{- else -}}
+      {{- printf "/%s%s" .Page.File.Dir .Destination | safeURL -}}
+    {{- end -}}
+  {{- else -}}
+    {{- .Destination | safeURL -}}
+  {{- end -}}"
+  {{- with .Title }} title="{{ . | safeHTML }}"{{- end -}}
+  {{- with .Text }} alt="{{ . | safeHTML }}"
+  {{- end -}}
+/>
+
+{{- /* whitespace stripped here to avoid trailing newline in rendered result caused by file EOL */ -}}
+````
+
+With these hooks in place, links to both notes as well as file attachments should now work correctly.
+
+ > 
+ > Note: If you're using a theme which comes with it's own render hooks, you might need to do a little extra work, or customize the snippets above, to avoid conflicts with the hooks from your theme.
+
 
 # Library usage
 
