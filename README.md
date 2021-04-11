@@ -226,6 +226,63 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 # Changelog
 
+## v0.7.0 (2021-04-11)
+
+### New
+
+* Postprocessing support. \[Nick Groenen]
+  
+  Add support for postprocessing of Markdown prior to writing converted
+  notes to disk.
+  
+  Postprocessors may be used when making use of Obsidian export as a Rust
+  library to do the following:
+  
+  1. Modify a note's `Context`, for example to change the destination
+     filename or update its Frontmatter.
+  1. Change a note's contents by altering `MarkdownEvents`.
+  1. Prevent later postprocessors from running or cause a note to be
+     skipped entirely.
+  Future releases of Obsidian export may come with built-in postprocessors
+  for users of the command-line tool to use, if general use-cases can be
+  identified.
+  
+  For example, a future release might include functionality to make notes
+  more suitable for the Hugo static site generator. This functionality
+  would be implemented as a postprocessor that could be enabled through
+  command-line flags.
+
+### Fixes
+
+* Also percent-encode `?` in filenames. \[Nick Groenen]
+  
+  A recent Obsidian update expanded the list of allowed characters in
+  filenames, which now includes `?` as well. This needs to be
+  percent-encoded for proper links in static site generators like Hugo.
+
+### Other
+
+* Bump pretty_assertions from 0.6.1 to 0.7.1. \[dependabot\[bot]]
+  
+  Bumps [pretty_assertions](https://github.com/colin-kiegel/rust-pretty-assertions) from 0.6.1 to 0.7.1.
+  
+  * [Release notes](https://github.com/colin-kiegel/rust-pretty-assertions/releases)
+  * [Changelog](https://github.com/colin-kiegel/rust-pretty-assertions/blob/main/CHANGELOG.md)
+  * [Commits](https://github.com/colin-kiegel/rust-pretty-assertions/compare/v0.6.1...v0.7.1)
+* Bump walkdir from 2.3.1 to 2.3.2. \[dependabot\[bot]]
+  
+  Bumps [walkdir](https://github.com/BurntSushi/walkdir) from 2.3.1 to 2.3.2.
+  
+  * [Release notes](https://github.com/BurntSushi/walkdir/releases)
+  * [Commits](https://github.com/BurntSushi/walkdir/compare/2.3.1...2.3.2)
+* Bump regex from 1.4.3 to 1.4.5. \[dependabot\[bot]]
+  
+  Bumps [regex](https://github.com/rust-lang/regex) from 1.4.3 to 1.4.5.
+  
+  * [Release notes](https://github.com/rust-lang/regex/releases)
+  * [Changelog](https://github.com/rust-lang/regex/blob/master/CHANGELOG.md)
+  * [Commits](https://github.com/rust-lang/regex/compare/1.4.3...1.4.5)
+
 ## v0.6.0 (2021-02-15)
 
 ### New
