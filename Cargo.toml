@@ -40,6 +40,6 @@ slug = "0.1.4"
 snafu = "0.6.10"
 
 [dev-dependencies]
-pretty_assertions = "0.6.1"
+pretty_assertions = "0.7.1"
 tempfile = "3.2.0"
 walkdir = "2.3.2"
