@@ -221,6 +221,8 @@ To get started, visit the library documentation on [obsidian_export](https://doc
 
 Obsidian-export is dual-licensed under the [Apache 2.0](https://github.com/zoni/obsidian-export/blob/master/LICENSE-APACHE) and the [MIT](https://github.com/zoni/obsidian-export/blob/master/LICENSE-MIT) licenses.
 
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in this project by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
+
 
 # Changelog
 
