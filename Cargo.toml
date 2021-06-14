@@ -26,7 +26,7 @@ path = "src/main.rs"
 [dependencies]
 eyre = "0.6.5"
 gumdrop = "0.8.0"
-ignore = "0.4.17"
+ignore = "0.4.18"
 lazy_static = "1.4.0"
 matter = "0.1.0-alpha4"
 pathdiff = "0.2.0"
