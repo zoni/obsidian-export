@@ -13,11 +13,17 @@ struct Opts {
     #[options(help = "Display version information")]
     version: bool,
 
-    #[options(help = "Source file containing reference", free, required)]
+    #[options(help = "Path to the vault root", free, required)]
     source: Option<PathBuf>,
 
     #[options(help = "Destination file being linked to", free, required)]
     destination: Option<PathBuf>,
+
+    #[options(
+        short = "t",
+        help = "Start scanning from this note"
+    )]
+    root_note: Option<PathBuf>,
 
     #[options(
         help = "Frontmatter strategy (one of: always, never, auto)",
@@ -75,6 +81,7 @@ fn main() {
     };
 
     let mut exporter = Exporter::new(source, destination);
+    exporter.set_root_note(args.root_note);
     exporter.frontmatter_strategy(args.frontmatter_strategy);
     exporter.process_embeds_recursively(!args.no_recursive_embeds);
     exporter.walk_options(walk_options);

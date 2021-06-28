@@ -211,6 +211,7 @@ pub enum PostprocessorResult {
 pub struct Exporter<'a> {
     root: PathBuf,
     destination: PathBuf,
+    root_note: Option<PathBuf>,
     frontmatter_strategy: FrontmatterStrategy,
     vault_contents: Option<Vec<PathBuf>>,
     walk_options: WalkOptions<'a>,
@@ -245,12 +246,29 @@ impl<'a> Exporter<'a> {
         Exporter {
             root: source,
             destination,
+            root_note: None,
             frontmatter_strategy: FrontmatterStrategy::Auto,
             walk_options: WalkOptions::default(),
             process_embeds_recursively: true,
             vault_contents: None,
             postprocessors: vec![],
         }
+    }
+
+    /// Set the note to start the export from.
+    ///
+    /// Path should be relative to the vault root
+    /// If the path includes path to the root as a prefix,
+    /// the prefix will be removed.
+    pub fn set_root_note(&mut self, path: Option<PathBuf>) -> &mut Exporter<'a> {
+        if let Some(note_path) = path.clone() {
+            let trimmed_path_res = note_path.strip_prefix(self.root.clone());
+            self.root_note = match trimmed_path_res {
+                Ok(trimmed_path) => Some(PathBuf::from(trimmed_path)),
+                Err(_) => path
+            };
+        }
+        self
     }
 
     /// Set the [`WalkOptions`] to be used for this exporter.
@@ -330,19 +348,23 @@ impl<'a> Exporter<'a> {
             self.root.as_path(),
             self.walk_options.clone(),
         )?);
-        self.vault_contents
-            .as_ref()
-            .unwrap()
-            .clone()
-            .into_par_iter()
-            .try_for_each(|file| {
-                let relative_path = file
-                    .strip_prefix(&self.root.clone())
-                    .expect("file should always be nested under root")
-                    .to_path_buf();
-                let destination = &self.destination.join(&relative_path);
-                self.export_note(&file, destination)
-            })?;
+
+        match self.root_note.clone() {
+            None => self.vault_contents
+                        .as_ref()
+                        .unwrap()
+                        .clone()
+                        .into_par_iter()
+                        .try_for_each(|file| {
+                            let relative_path = file
+                                .strip_prefix(&self.root.clone())
+                                .expect("file should always be nested under root")
+                                .to_path_buf();
+                            let destination = &self.destination.join(&relative_path);
+                            self.export_note(&file, destination)
+                        })?,
+            Some(path) => self.export_note(&self.root.join(path.clone()), &self.destination.join(path.clone()))?
+        };
         Ok(())
     }
 
