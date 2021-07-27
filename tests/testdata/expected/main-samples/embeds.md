@@ -22,7 +22,7 @@ And within a code block:
 ![[note-with-frontmatter]]
 ````
 
-![\[Not a valid embed.]
+![\[Not a valid embed.\]
 
 ![\[Partial embed
 
