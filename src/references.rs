@@ -79,8 +79,8 @@ impl<'a> ObsidianNoteReference<'a> {
 
         ObsidianNoteReference {
             file,
-            label,
             section,
+            label,
         }
     }
 

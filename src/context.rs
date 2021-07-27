@@ -1,5 +1,5 @@
 use crate::Frontmatter;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
 /// Context holds metadata about a note which is being parsed.
@@ -55,7 +55,7 @@ impl Context {
     }
 
     /// Create a new `Context` which inherits from a parent Context.
-    pub fn from_parent(context: &Context, child: &PathBuf) -> Context {
+    pub fn from_parent(context: &Context, child: &Path) -> Context {
         let mut context = context.clone();
         context.file_tree.push(child.to_path_buf());
         context

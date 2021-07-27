@@ -317,7 +317,7 @@ impl<'a> Exporter<'a> {
                     self.destination.clone()
                 }
             };
-            return Ok(self.export_note(&self.root, &destination)?);
+            return self.export_note(&self.root, &destination);
         }
 
         if !self.destination.exists() {
