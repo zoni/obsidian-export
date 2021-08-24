@@ -230,6 +230,7 @@ pub struct Exporter<'a> {
     vault_contents: Option<Vec<PathBuf>>,
     walk_options: WalkOptions<'a>,
     process_embeds_recursively: bool,
+    add_titles: bool,
     postprocessors: Vec<&'a Postprocessor>,
     embed_postprocessors: Vec<&'a Postprocessor>,
 }
@@ -246,6 +247,7 @@ impl<'a> fmt::Debug for Exporter<'a> {
                 "process_embeds_recursively",
                 &self.process_embeds_recursively,
             )
+            .field("add_titles", &self.add_titles)
             .field(
                 "postprocessors",
                 &format!("<{} postprocessors active>", self.postprocessors.len()),
@@ -272,6 +274,7 @@ impl<'a> Exporter<'a> {
             frontmatter_strategy: FrontmatterStrategy::Auto,
             walk_options: WalkOptions::default(),
             process_embeds_recursively: true,
+            add_titles: false,
             vault_contents: None,
             postprocessors: vec![],
             embed_postprocessors: vec![],
@@ -309,6 +312,23 @@ impl<'a> Exporter<'a> {
     /// original note, instead of embedding it again a link to the note is inserted instead.
     pub fn process_embeds_recursively(&mut self, recursive: bool) -> &mut Exporter<'a> {
         self.process_embeds_recursively = recursive;
+        self
+    }
+
+    /// Enable or disable addition of title headings to the top of each parsed note
+    ///
+    /// When this option is enabled, each parsed note will be considered to start with a heading:
+    ///
+    ///   # Title-of-note
+    ///
+    /// even when no such line is present in the source file. The title is inferred based on the
+    /// filename of the note.
+    ///
+    /// This option makes heavily nested note embeds make more sense in the exported document,
+    /// since it shows which note the embedded content comes from. It loosely matches the behaviour
+    /// of the mainline Obsidian UI when viewing notes in preview mode.
+    pub fn add_titles(&mut self, add_titles: bool) -> &mut Exporter<'a> {
+        self.add_titles = add_titles;
         self
     }
 
@@ -454,6 +474,16 @@ impl<'a> Exporter<'a> {
         let mut events = vec![];
         // Most of the time, a reference triggers 5 events: [ or ![, [, <text>, ], ]
         let mut buffer = Vec::with_capacity(5);
+
+        if self.add_titles {
+            // Ensure that each (possibly embedded) note starts with a reasonable top-level heading
+            let note_name = infer_note_title_from_path(path);
+            let h1_tag = Tag::Heading(HeadingLevel::H1, None, vec![]);
+
+            events.push(Event::Start(h1_tag.clone()));
+            events.push(Event::Text(note_name));
+            events.push(Event::End(h1_tag.clone()));
+        }
 
         for event in Parser::new_ext(&content, parser_options) {
             if ref_parser.state == RefParserState::Resetting {
@@ -723,6 +753,15 @@ fn lookup_filename_in_vault<'a>(
             || path.ends_with(format!("{}.md", &filename))
             || path_lowered.ends_with(format!("{}.md", &filename.to_lowercase()))
     })
+}
+
+fn infer_note_title_from_path(path: &Path) -> CowStr {
+    const PLACEHOLDER_TITLE: &str = "invalid-note-title";
+
+    match path.file_stem() {
+        None => CowStr::from(PLACEHOLDER_TITLE),
+        Some(s) => CowStr::from(s.to_string_lossy().into_owned()),
+    }
 }
 
 fn render_mdevents_to_mdtext(markdown: MarkdownEvents) -> String {
