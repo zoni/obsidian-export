@@ -67,6 +67,8 @@ Running `obsidian-export --version` should print a version number rather than gi
  > 
  > For example `~/Downloads/obsidian-export --version` on Mac/Linux or `~\Downloads\obsidian-export --version` on Windows (PowerShell).
 
+## Exporting notes
+
 In it's most basic form, `obsidian-export` takes just two mandatory arguments, a source and a destination:
 
 ````sh
@@ -88,6 +90,31 @@ obsidian-export my-obsidian-vault/some-note.md /tmp/export/
 # Export as exported-note.md in /tmp/
 obsidian-export my-obsidian-vault/some-note.md /tmp/exported-note.md
 ````
+
+Note that in this mode, obsidian-export sees `some-note.md` as being the only file that exists in your vault so references to other notes won't be resolved.
+This is by design.
+
+If you'd like to export a single note while resolving links or embeds to other areas in your vault then you should instead specify the root of your vault as the source, passing the file you'd like to export with `--start-at`, as described in the next section.
+
+### Exporting a partial vault
+
+Using the `--start-at` argument, you can export just a subset of your vault.
+Given the following vault structure:
+
+````
+my-obsidian-vault 
+├── Notes/
+├── Books/
+└── People/
+````
+
+This will export only the notes in the `Books` directory to `exported-notes`:
+
+````sh
+obsidian-export my-obsidian-vault --start-at my-obsidian-vault/Books exported-notes
+````
+
+In this mode, all notes under the source (the first argument) are considered part of the vault so any references to these files will remain intact, even if they're not part of the exported notes.
 
 ## Character encodings
 
@@ -230,7 +257,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 ### New
 
-* Postprocessing support. \[Nick Groenen]
+* Postprocessing support. \[Nick Groenen\]
   
   Add support for postprocessing of Markdown prior to writing converted
   notes to disk.
@@ -254,7 +281,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 ### Fixes
 
-* Also percent-encode `?` in filenames. \[Nick Groenen]
+* Also percent-encode `?` in filenames. \[Nick Groenen\]
   
   A recent Obsidian update expanded the list of allowed characters in
   filenames, which now includes `?` as well. This needs to be
@@ -262,20 +289,20 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 ### Other
 
-* Bump pretty_assertions from 0.6.1 to 0.7.1. \[dependabot\[bot]]
+* Bump pretty_assertions from 0.6.1 to 0.7.1. \[dependabot\[bot\]\]
   
   Bumps [pretty_assertions](https://github.com/colin-kiegel/rust-pretty-assertions) from 0.6.1 to 0.7.1.
   
   * [Release notes](https://github.com/colin-kiegel/rust-pretty-assertions/releases)
   * [Changelog](https://github.com/colin-kiegel/rust-pretty-assertions/blob/main/CHANGELOG.md)
   * [Commits](https://github.com/colin-kiegel/rust-pretty-assertions/compare/v0.6.1...v0.7.1)
-* Bump walkdir from 2.3.1 to 2.3.2. \[dependabot\[bot]]
+* Bump walkdir from 2.3.1 to 2.3.2. \[dependabot\[bot\]\]
   
   Bumps [walkdir](https://github.com/BurntSushi/walkdir) from 2.3.1 to 2.3.2.
   
   * [Release notes](https://github.com/BurntSushi/walkdir/releases)
   * [Commits](https://github.com/BurntSushi/walkdir/compare/2.3.1...2.3.2)
-* Bump regex from 1.4.3 to 1.4.5. \[dependabot\[bot]]
+* Bump regex from 1.4.3 to 1.4.5. \[dependabot\[bot\]\]
   
   Bumps [regex](https://github.com/rust-lang/regex) from 1.4.3 to 1.4.5.
   
@@ -287,11 +314,11 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 ### New
 
-* Add `--version` flag. \[Nick Groenen]
+* Add `--version` flag. \[Nick Groenen\]
 
 ### Changes
 
-* Don't Box FilterFn in WalkOptions. \[Nick Groenen]
+* Don't Box FilterFn in WalkOptions. \[Nick Groenen\]
   
   Previously, `filter_fn` on the `WalkOptions` struct looked like:
   
@@ -313,7 +340,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 ### Fixes
 
-* Recognize notes beginning with underscores. \[Nick Groenen]
+* Recognize notes beginning with underscores. \[Nick Groenen\]
   
   Notes with an underscore would fail to be recognized within Obsidian
   `[[_WikiLinks]]` due to the assumption that the underlying Markdown
@@ -324,46 +351,46 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
   machine which correctly recognizes this corner-case (and likely some
   others).
 
-* Support self-references. \[Joshua Coles]
+* Support self-references. \[Joshua Coles\]
   
   This ensures links to headings within the same note (`[[#Heading]]`)
   resolve correctly.
 
 ### Other
 
-* Avoid redundant "Release" in GitHub release titles. \[Nick Groenen]
+* Avoid redundant "Release" in GitHub release titles. \[Nick Groenen\]
 
-* Add failing testcase for files with underscores. \[Nick Groenen]
+* Add failing testcase for files with underscores. \[Nick Groenen\]
 
-* Add unit tests for display of ObsidianNoteReference. \[Nick Groenen]
+* Add unit tests for display of ObsidianNoteReference. \[Nick Groenen\]
 
-* Add some unit tests for ObsidianNoteReference::from_str. \[Nick Groenen]
+* Add some unit tests for ObsidianNoteReference::from_str. \[Nick Groenen\]
 
-* Also run tests on pull requests. \[Nick Groenen]
+* Also run tests on pull requests. \[Nick Groenen\]
 
-* Apply clippy suggestions following rust 1.50.0. \[Nick Groenen]
+* Apply clippy suggestions following rust 1.50.0. \[Nick Groenen\]
 
-* Fix infinite recursion bug with references to current file. \[Joshua Coles]
+* Fix infinite recursion bug with references to current file. \[Joshua Coles\]
 
-* Add tests for self-references. \[Joshua Coles]
+* Add tests for self-references. \[Joshua Coles\]
   
   Note as there is no support for block references at the moment, the generated link goes nowhere, however it is to a reasonable ID
 
-* Bump tempfile from 3.1.0 to 3.2.0. \[dependabot\[bot]]
+* Bump tempfile from 3.1.0 to 3.2.0. \[dependabot\[bot\]\]
   
   Bumps [tempfile](https://github.com/Stebalien/tempfile) from 3.1.0 to 3.2.0.
   
   * [Release notes](https://github.com/Stebalien/tempfile/releases)
   * [Changelog](https://github.com/Stebalien/tempfile/blob/master/NEWS)
   * [Commits](https://github.com/Stebalien/tempfile/commits)
-* Bump eyre from 0.6.3 to 0.6.5. \[dependabot\[bot]]
+* Bump eyre from 0.6.3 to 0.6.5. \[dependabot\[bot\]\]
   
   Bumps [eyre](https://github.com/yaahc/eyre) from 0.6.3 to 0.6.5.
   
   * [Release notes](https://github.com/yaahc/eyre/releases)
   * [Changelog](https://github.com/yaahc/eyre/blob/v0.6.5/CHANGELOG.md)
   * [Commits](https://github.com/yaahc/eyre/compare/v0.6.3...v0.6.5)
-* Bump regex from 1.4.2 to 1.4.3. \[dependabot\[bot]]
+* Bump regex from 1.4.2 to 1.4.3. \[dependabot\[bot\]\]
   
   Bumps [regex](https://github.com/rust-lang/regex) from 1.4.2 to 1.4.3.
   
@@ -375,7 +402,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 ### Fixes
 
-* Find uppercased notes when referenced with lowercase. \[Nick Groenen]
+* Find uppercased notes when referenced with lowercase. \[Nick Groenen\]
   
   This commit fixes a bug where, if a note contained uppercase characters
   (for example `Note.md`) but was referred to using lowercase
@@ -385,7 +412,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 ### New
 
-* Add --no-recursive-embeds to break infinite recursion cycles. \[Nick Groenen]
+* Add --no-recursive-embeds to break infinite recursion cycles. \[Nick Groenen\]
   
   It's possible to end up with "recursive embeds" when two notes embed
   each other. This happens for example when a `Note A.md` contains
@@ -400,14 +427,14 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
   
   See also: https://github.com/zoni/obsidian-export/issues/1
 
-* Make walk options configurable on CLI. \[Nick Groenen]
+* Make walk options configurable on CLI. \[Nick Groenen\]
   
   By default hidden files, patterns listed in `.export-ignore` as well as
   any files ignored by git are excluded from exports. This behavior has
   been made configurable on the CLI using the new flags `--hidden`,
   `--ignore-file` and `--no-git`.
 
-* Support links referencing headings. \[Nick Groenen]
+* Support links referencing headings. \[Nick Groenen\]
   
   Previously, links referencing a heading (`[[note#heading]]`) would just
   link to the file name without including an anchor in the link target.
@@ -427,7 +454,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
   end with a smiley. The slug library, and thus obsidian-export, will
   avoid such dangling dashes).
 
-* Support embeds referencing headings. \[Nick Groenen]
+* Support embeds referencing headings. \[Nick Groenen\]
   
   Previously, partial embeds (`![[note#heading]]`) would always include
   the entire file into the source note. Now, such embeds will only include
@@ -437,20 +464,20 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 ### Changes
 
-* Print warnings to stderr rather than stdout. \[Nick Groenen]
+* Print warnings to stderr rather than stdout. \[Nick Groenen\]
   
   Warning messages emitted when encountering broken links/references will
   now be printed to stderr as opposed to stdout.
 
 ### Other
 
-* Include filter_fn field in WalkOptions debug display. \[Nick Groenen]
+* Include filter_fn field in WalkOptions debug display. \[Nick Groenen\]
 
 ## v0.4.0 (2020-12-23)
 
 ### Fixes
 
-* Correct relative links within embedded notes. \[Nick Groenen]
+* Correct relative links within embedded notes. \[Nick Groenen\]
   
   Links within an embedded note would point to other local resources
   relative to the filesystem location of the note being embedded.
@@ -463,13 +490,13 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 ### Other
 
-* Add brief library documentation to all public types and functions. \[Nick Groenen]
+* Add brief library documentation to all public types and functions. \[Nick Groenen\]
 
 ## v0.3.0 (2020-12-21)
 
 ### New
 
-* Report file tree when RecursionLimitExceeded is hit. \[Nick Groenen]
+* Report file tree when RecursionLimitExceeded is hit. \[Nick Groenen\]
   
   This refactors the Context to maintain a list of all the files which
   have been processed so far in a chain of embeds. This information is
@@ -478,37 +505,37 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 ### Changes
 
-* Add extra whitespace around multi-line warnings. \[Nick Groenen]
+* Add extra whitespace around multi-line warnings. \[Nick Groenen\]
   
   This makes errors a bit easier to distinguish after a number of warnings
   has been printed.
 
 ### Other
 
-* Setup gitchangelog. \[Nick Groenen]
+* Setup gitchangelog. \[Nick Groenen\]
   
   This adds a changelog (CHANGES.md) which is automatically generated with
   [gitchangelog](https://github.com/vaab/gitchangelog).
 
 ## v0.2.0 (2020-12-13)
 
-* Allow custom filter function to be passed with WalkOptions. \[Nick Groenen]
+* Allow custom filter function to be passed with WalkOptions. \[Nick Groenen\]
 
-* Re-export vault_contents and WalkOptions as pub from crate root. \[Nick Groenen]
+* Re-export vault_contents and WalkOptions as pub from crate root. \[Nick Groenen\]
 
-* Run mdbook hook against README.md too. \[Nick Groenen]
+* Run mdbook hook against README.md too. \[Nick Groenen\]
 
-* Update installation instructions. \[Nick Groenen]
+* Update installation instructions. \[Nick Groenen\]
   
   Installation no longer requires a git repository URL now that a crate is
   published.
 
-* Add MdBook generation script and precommit hook. \[Nick Groenen]
+* Add MdBook generation script and precommit hook. \[Nick Groenen\]
 
-* Add more reliable non-ASCII tetscase. \[Nick Groenen]
+* Add more reliable non-ASCII tetscase. \[Nick Groenen\]
 
-* Create FUNDING.yml. \[Nick Groenen]
+* Create FUNDING.yml. \[Nick Groenen\]
 
 ## v0.1.0 (2020-11-28)
 
-* Public release. \[Nick Groenen]
+* Public release. \[Nick Groenen\]

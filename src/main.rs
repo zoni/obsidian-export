@@ -13,11 +13,14 @@ struct Opts {
     #[options(help = "Display version information")]
     version: bool,
 
-    #[options(help = "Source file containing reference", free, required)]
+    #[options(help = "Read notes from this source", free, required)]
     source: Option<PathBuf>,
 
-    #[options(help = "Destination file being linked to", free, required)]
+    #[options(help = "Write notes to this destination", free, required)]
     destination: Option<PathBuf>,
+
+    #[options(no_short, help = "Only export notes under this sub-path")]
+    start_at: Option<PathBuf>,
 
     #[options(
         help = "Frontmatter strategy (one of: always, never, auto)",
@@ -64,7 +67,7 @@ fn main() {
     }
 
     let args = Opts::parse_args_default_or_exit();
-    let source = args.source.unwrap();
+    let root = args.source.unwrap();
     let destination = args.destination.unwrap();
 
     let walk_options = WalkOptions {
@@ -74,10 +77,14 @@ fn main() {
         ..Default::default()
     };
 
-    let mut exporter = Exporter::new(source, destination);
+    let mut exporter = Exporter::new(root, destination);
     exporter.frontmatter_strategy(args.frontmatter_strategy);
     exporter.process_embeds_recursively(!args.no_recursive_embeds);
     exporter.walk_options(walk_options);
+
+    if let Some(path) = args.start_at {
+        exporter.start_at(path);
+    }
 
     if let Err(err) = exporter.run() {
         match err {

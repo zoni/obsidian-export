@@ -10,6 +10,8 @@ Running `obsidian-export --version` should print a version number rather than gi
 >
 > For example `~/Downloads/obsidian-export --version` on Mac/Linux or `~\Downloads\obsidian-export --version` on Windows (PowerShell).
 
+## Exporting notes
+
 In it's most basic form, `obsidian-export` takes just two mandatory arguments, a source and a destination:
 
 ```sh
@@ -30,6 +32,31 @@ obsidian-export my-obsidian-vault/some-note.md /tmp/export/
 # Export as exported-note.md in /tmp/
 obsidian-export my-obsidian-vault/some-note.md /tmp/exported-note.md
 ```
+
+Note that in this mode, obsidian-export sees `some-note.md` as being the only file that exists in your vault so references to other notes won't be resolved.
+This is by design.
+
+If you'd like to export a single note while resolving links or embeds to other areas in your vault then you should instead specify the root of your vault as the source, passing the file you'd like to export with `--start-at`, as described in the next section.
+
+### Exporting a partial vault
+
+Using the `--start-at` argument, you can export just a subset of your vault.
+Given the following vault structure:
+
+```
+my-obsidian-vault 
+├── Notes/
+├── Books/
+└── People/
+```
+
+This will export only the notes in the `Books` directory to `exported-notes`:
+
+```sh
+obsidian-export my-obsidian-vault --start-at my-obsidian-vault/Books exported-notes
+```
+
+In this mode, all notes under the source (the first argument) are considered part of the vault so any references to these files will remain intact, even if they're not part of the exported notes.
 
 ## Character encodings
 
