@@ -162,6 +162,79 @@ fn test_single_file_to_file() {
 }
 
 #[test]
+fn test_start_at_subdir() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+    let mut exporter = Exporter::new(
+        PathBuf::from("tests/testdata/input/start-at/"),
+        tmp_dir.path().to_path_buf(),
+    );
+    exporter.start_at(PathBuf::from("tests/testdata/input/start-at/subdir"));
+    exporter.run().unwrap();
+
+    let expected = if cfg!(windows) {
+        read_to_string("tests/testdata/expected/start-at/subdir/Note B.md")
+            .unwrap()
+            .replace("/", "\\")
+    } else {
+        read_to_string("tests/testdata/expected/start-at/subdir/Note B.md").unwrap()
+    };
+
+    assert_eq!(
+        expected,
+        read_to_string(tmp_dir.path().clone().join(PathBuf::from("Note B.md"))).unwrap(),
+    );
+}
+
+#[test]
+fn test_start_at_file_within_subdir_destination_is_dir() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+    let mut exporter = Exporter::new(
+        PathBuf::from("tests/testdata/input/start-at/"),
+        tmp_dir.path().to_path_buf(),
+    );
+    exporter.start_at(PathBuf::from(
+        "tests/testdata/input/start-at/subdir/Note B.md",
+    ));
+    exporter.run().unwrap();
+
+    let expected = if cfg!(windows) {
+        read_to_string("tests/testdata/expected/start-at/single-file/Note B.md")
+            .unwrap()
+            .replace("/", "\\")
+    } else {
+        read_to_string("tests/testdata/expected/start-at/single-file/Note B.md").unwrap()
+    };
+
+    assert_eq!(
+        expected,
+        read_to_string(tmp_dir.path().clone().join(PathBuf::from("Note B.md"))).unwrap(),
+    );
+}
+
+#[test]
+fn test_start_at_file_within_subdir_destination_is_file() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+    let dest = tmp_dir.path().clone().join(PathBuf::from("note.md"));
+    let mut exporter = Exporter::new(
+        PathBuf::from("tests/testdata/input/start-at/"),
+        dest.clone(),
+    );
+    exporter.start_at(PathBuf::from(
+        "tests/testdata/input/start-at/subdir/Note B.md",
+    ));
+    exporter.run().unwrap();
+
+    let expected = if cfg!(windows) {
+        read_to_string("tests/testdata/expected/start-at/single-file/Note B.md")
+            .unwrap()
+            .replace("/", "\\")
+    } else {
+        read_to_string("tests/testdata/expected/start-at/single-file/Note B.md").unwrap()
+    };
+    assert_eq!(expected, read_to_string(dest).unwrap(),);
+}
+
+#[test]
 fn test_not_existing_source() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
 

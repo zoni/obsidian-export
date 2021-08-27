@@ -211,6 +211,7 @@ pub enum PostprocessorResult {
 pub struct Exporter<'a> {
     root: PathBuf,
     destination: PathBuf,
+    start_at: PathBuf,
     frontmatter_strategy: FrontmatterStrategy,
     vault_contents: Option<Vec<PathBuf>>,
     walk_options: WalkOptions<'a>,
@@ -239,11 +240,12 @@ impl<'a> fmt::Debug for Exporter<'a> {
 }
 
 impl<'a> Exporter<'a> {
-    /// Create a new exporter which reads notes from `source` and exports these to
+    /// Create a new exporter which reads notes from `root` and exports these to
     /// `destination`.
-    pub fn new(source: PathBuf, destination: PathBuf) -> Exporter<'a> {
+    pub fn new(root: PathBuf, destination: PathBuf) -> Exporter<'a> {
         Exporter {
-            root: source,
+            start_at: root.clone(),
+            root,
             destination,
             frontmatter_strategy: FrontmatterStrategy::Auto,
             walk_options: WalkOptions::default(),
@@ -251,6 +253,15 @@ impl<'a> Exporter<'a> {
             vault_contents: None,
             postprocessors: vec![],
         }
+    }
+
+    /// Set a custom starting point for the export.
+    ///
+    /// Normally all notes under `root` (except for notes excluded by ignore rules) will be exported.
+    /// When `start_at` is set, only notes under this path will be exported to the target destination.
+    pub fn start_at(&mut self, start_at: PathBuf) -> &mut Exporter<'a> {
+        self.start_at = start_at;
+        self
     }
 
     /// Set the [`WalkOptions`] to be used for this exporter.
@@ -292,13 +303,17 @@ impl<'a> Exporter<'a> {
             });
         }
 
-        // When a single file is specified, we can short-circuit contruction of walk and associated
-        // directory traversal. This also allows us to accept destination as either a file or a
-        // directory name.
-        if self.root.is_file() {
-            self.vault_contents = Some(vec![self.root.clone()]);
+        self.vault_contents = Some(vault_contents(
+            self.root.as_path(),
+            self.walk_options.clone(),
+        )?);
+
+        // When a single file is specified, just need to export that specific file instead of
+        // iterating over all discovered files. This also allows us to accept destination as either
+        // a file or a directory name.
+        if self.root.is_file() || self.start_at.is_file() {
             let source_filename = self
-                .root
+                .start_at
                 .file_name()
                 .expect("File without a filename? How is that possible?")
                 .to_string_lossy();
@@ -317,7 +332,7 @@ impl<'a> Exporter<'a> {
                     self.destination.clone()
                 }
             };
-            return self.export_note(&self.root, &destination);
+            return self.export_note(&self.start_at, &destination);
         }
 
         if !self.destination.exists() {
@@ -325,19 +340,15 @@ impl<'a> Exporter<'a> {
                 path: self.destination.clone(),
             });
         }
-
-        self.vault_contents = Some(vault_contents(
-            self.root.as_path(),
-            self.walk_options.clone(),
-        )?);
         self.vault_contents
             .as_ref()
             .unwrap()
             .clone()
             .into_par_iter()
+            .filter(|file| file.starts_with(&self.start_at))
             .try_for_each(|file| {
                 let relative_path = file
-                    .strip_prefix(&self.root.clone())
+                    .strip_prefix(&self.start_at.clone())
                     .expect("file should always be nested under root")
                     .to_path_buf();
                 let destination = &self.destination.join(&relative_path);
