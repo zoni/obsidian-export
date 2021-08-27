@@ -71,7 +71,7 @@ impl RefParser {
 impl<'a> ObsidianNoteReference<'a> {
     pub fn from_str(text: &str) -> ObsidianNoteReference {
         let captures = OBSIDIAN_NOTE_LINK_RE
-            .captures(&text)
+            .captures(text)
             .expect("note link regex didn't match - bad input?");
         let file = captures.name("file").map(|v| v.as_str());
         let label = captures.name("label").map(|v| v.as_str());

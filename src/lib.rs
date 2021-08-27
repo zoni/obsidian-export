@@ -357,7 +357,7 @@ impl<'a> Exporter<'a> {
     fn parse_and_export_obsidian_note(&self, src: &Path, dest: &Path) -> Result<()> {
         let mut context = Context::new(src.to_path_buf(), dest.to_path_buf());
 
-        let (frontmatter, mut markdown_events) = self.parse_obsidian_note(&src, &context)?;
+        let (frontmatter, mut markdown_events) = self.parse_obsidian_note(src, &context)?;
         context.frontmatter = frontmatter;
         for func in &self.postprocessors {
             let res = func(context, markdown_events);
@@ -526,12 +526,12 @@ impl<'a> Exporter<'a> {
         let note_ref = ObsidianNoteReference::from_str(link_text);
 
         let path = match note_ref.file {
-            Some(file) => lookup_filename_in_vault(file, &self.vault_contents.as_ref().unwrap()),
+            Some(file) => lookup_filename_in_vault(file, self.vault_contents.as_ref().unwrap()),
 
             // If we have None file it is either to a section or id within the same file and thus
             // the current embed logic will fail, recurssing until it reaches it's limit.
             // For now we just bail early.
-            None => return Ok(self.make_link_to_file(note_ref, &context)),
+            None => return Ok(self.make_link_to_file(note_ref, context)),
         };
 
         if path.is_none() {
@@ -560,7 +560,7 @@ impl<'a> Exporter<'a> {
 
         let events = match path.extension().unwrap_or(&no_ext).to_str() {
             Some("md") => {
-                let (_frontmatter, mut events) = self.parse_obsidian_note(&path, &child_context)?;
+                let (_frontmatter, mut events) = self.parse_obsidian_note(path, &child_context)?;
                 if let Some(section) = note_ref.section {
                     events = reduce_to_section(events, section);
                 }
@@ -604,7 +604,7 @@ impl<'a> Exporter<'a> {
     ) -> MarkdownEvents<'c> {
         let target_file = reference
             .file
-            .map(|file| lookup_filename_in_vault(file, &self.vault_contents.as_ref().unwrap()))
+            .map(|file| lookup_filename_in_vault(file, self.vault_contents.as_ref().unwrap()))
             .unwrap_or_else(|| Some(context.current_file()));
 
         if target_file.is_none() {
