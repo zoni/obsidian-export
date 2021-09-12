@@ -5,6 +5,6 @@ is_root_note: true
 
 # Title
 
-![[_embed]]
+This note is embedded. It mentions the word bar.
 
 Sentence containing foo.

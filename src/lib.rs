@@ -45,6 +45,26 @@ pub type MarkdownEvents<'a> = Vec<Event<'a>>;
 /// 3. Prevent later postprocessors from running ([PostprocessorResult::StopHere]) or cause a note
 ///    to be skipped entirely ([PostprocessorResult::StopAndSkipNote]).
 ///
+/// # Postprocessors and embeds
+///
+/// Postprocessors normally run at the end of the export phase, once notes have been fully parsed.
+/// This means that any embedded notes have been resolved and merged into the final note already.
+///
+/// In some cases it may be desirable to change the contents of these embedded notes *before* they
+/// are inserted into the final document. This is possible through the use of
+/// [Exporter::add_embed_postprocessor].
+/// These "embed postprocessors" run much the same way as regular postprocessors, but they're run on
+/// the note that is about to be embedded in another note. In addition:
+///
+/// - Changes to context carry over to later embed postprocessors, but are then discarded. This
+///   means that changes to frontmatter do not propagate to the root note for example.
+/// - [PostprocessorResult::StopAndSkipNote] prevents the embedded note from being included (it's
+///   replaced with a blank document) but doesn't affect the root note.
+///
+/// It's possible to pass the same functions to [Exporter::add_postprocessor] and
+/// [Exporter::add_embed_postprocessor]. The [Context::note_depth] method may be used to determine
+/// whether a note is a root note or an embedded note in this situation.
+///
 /// # Examples
 ///
 /// ## Update frontmatter
@@ -217,6 +237,7 @@ pub struct Exporter<'a> {
     walk_options: WalkOptions<'a>,
     process_embeds_recursively: bool,
     postprocessors: Vec<&'a Postprocessor>,
+    embed_postprocessors: Vec<&'a Postprocessor>,
 }
 
 impl<'a> fmt::Debug for Exporter<'a> {
@@ -235,6 +256,13 @@ impl<'a> fmt::Debug for Exporter<'a> {
                 "postprocessors",
                 &format!("<{} postprocessors active>", self.postprocessors.len()),
             )
+            .field(
+                "embed_postprocessors",
+                &format!(
+                    "<{} postprocessors active>",
+                    self.embed_postprocessors.len()
+                ),
+            )
             .finish()
     }
 }
@@ -252,6 +280,7 @@ impl<'a> Exporter<'a> {
             process_embeds_recursively: true,
             vault_contents: None,
             postprocessors: vec![],
+            embed_postprocessors: vec![],
         }
     }
 
@@ -292,6 +321,12 @@ impl<'a> Exporter<'a> {
     /// Append a function to the chain of [postprocessors][Postprocessor] to run on exported Obsidian Markdown notes.
     pub fn add_postprocessor(&mut self, processor: &'a Postprocessor) -> &mut Exporter<'a> {
         self.postprocessors.push(processor);
+        self
+    }
+
+    /// Append a function to the chain of [postprocessors][Postprocessor] for embeds.
+    pub fn add_embed_postprocessor(&mut self, processor: &'a Postprocessor) -> &mut Exporter<'a> {
+        self.embed_postprocessors.push(processor);
         self
     }
 
@@ -377,7 +412,7 @@ impl<'a> Exporter<'a> {
             match res.2 {
                 PostprocessorResult::StopHere => break,
                 PostprocessorResult::StopAndSkipNote => return Ok(()),
-                _ => (),
+                PostprocessorResult::Continue => (),
             }
         }
 
@@ -558,7 +593,7 @@ impl<'a> Exporter<'a> {
         }
 
         let path = path.unwrap();
-        let child_context = Context::from_parent(context, path);
+        let mut child_context = Context::from_parent(context, path);
         let no_ext = OsString::new();
 
         if !self.process_embeds_recursively && context.file_tree().contains(path) {
@@ -571,9 +606,24 @@ impl<'a> Exporter<'a> {
 
         let events = match path.extension().unwrap_or(&no_ext).to_str() {
             Some("md") => {
-                let (_frontmatter, mut events) = self.parse_obsidian_note(path, &child_context)?;
+                let (frontmatter, mut events) = self.parse_obsidian_note(path, &child_context)?;
+                child_context.frontmatter = frontmatter;
                 if let Some(section) = note_ref.section {
                     events = reduce_to_section(events, section);
+                }
+                for func in &self.embed_postprocessors {
+                    // Postprocessors running on embeds shouldn't be able to change frontmatter (or
+                    // any other metadata), so we give them a clone of the context.
+                    let res = func(child_context, events);
+                    child_context = res.0;
+                    events = res.1;
+                    match res.2 {
+                        PostprocessorResult::StopHere => break,
+                        PostprocessorResult::StopAndSkipNote => {
+                            events = vec![];
+                        }
+                        PostprocessorResult::Continue => (),
+                    }
                 }
                 events
             }
