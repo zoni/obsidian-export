@@ -1,5 +1,97 @@
 # Changelog
 
+## v21.9.0 (2021-09-12)
+
+> This release switches to a [calendar versioning scheme](https://calver.org/overview.html).
+> Details on this decision can be read in [switching obsidian-export to CalVer](https://nick.groenen.me/posts/switching-obsidian-export-to-calver/).
+
+### New
+
+* Support postprocessors running on embedded notes. [Nick Groenen]
+
+  This introduces support for postprocessors that are run on the result of
+  a note that is being embedded into another note. This differs from the
+  existing postprocessors (which remain unchanged) that run once all
+  embeds have been processed and merged with the final note.
+
+  These "embed postprocessors" may be set through the new
+  `Exporter::add_embed_postprocessor` method.
+
+* Add start_at option to export a partial vault. [Nick Groenen]
+
+  This introduces a new `--start-at` CLI argument and corresponding
+  `start_at()` method on the Exporter type that allows exporting of only a
+  given subdirectory within a vault.
+
+  See the updated README file for more details on when and how this may be
+  used.
+
+### Other
+
+* Don't build docs for the bin target. [Nick Groenen]
+
+  The library contains documentation covering both CLI and library usage,
+  there's no separate documentation for just the binary target.
+
+* Move postprocessor tests into their own file for clarity. [Nick Groenen]
+
+* Update indirect dependencies. [Nick Groenen]
+
+* Bump serde_yaml from 0.8.19 to 0.8.20. [dependabot[bot]]
+
+  Bumps [serde_yaml](https://github.com/dtolnay/serde-yaml) from 0.8.19 to 0.8.20.
+  - [Release notes](https://github.com/dtolnay/serde-yaml/releases)
+  - [Commits](https://github.com/dtolnay/serde-yaml/compare/0.8.19...0.8.20)
+
+  ---
+  updated-dependencies:
+  - dependency-name: serde_yaml
+    dependency-type: direct:production
+    update-type: version-update:semver-patch
+  ...
+
+* Don't borrow references that are immediately dereferenced. [Nick Groenen]
+
+  This was caught by a recently introduced clippy rule
+
+* Bump serde_yaml from 0.8.17 to 0.8.19. [dependabot[bot]]
+
+  Bumps [serde_yaml](https://github.com/dtolnay/serde-yaml) from 0.8.17 to 0.8.19.
+  - [Release notes](https://github.com/dtolnay/serde-yaml/releases)
+  - [Commits](https://github.com/dtolnay/serde-yaml/compare/0.8.17...0.8.19)
+
+  ---
+  updated-dependencies:
+  - dependency-name: serde_yaml
+    dependency-type: direct:production
+    update-type: version-update:semver-patch
+  ...
+
+* Update dependencies. [Nick Groenen]
+
+* Fix 4 new clippy lints. [Nick Groenen]
+
+* Bump regex from 1.4.6 to 1.5.3. [dependabot[bot]]
+
+  Bumps [regex](https://github.com/rust-lang/regex) from 1.4.6 to 1.5.3.
+  - [Release notes](https://github.com/rust-lang/regex/releases)
+  - [Changelog](https://github.com/rust-lang/regex/blob/master/CHANGELOG.md)
+  - [Commits](https://github.com/rust-lang/regex/compare/1.4.6...1.5.3)
+
+* Bump pretty_assertions from 0.7.1 to 0.7.2. [dependabot[bot]]
+
+  Bumps [pretty_assertions](https://github.com/colin-kiegel/rust-pretty-assertions) from 0.7.1 to 0.7.2.
+  - [Release notes](https://github.com/colin-kiegel/rust-pretty-assertions/releases)
+  - [Changelog](https://github.com/colin-kiegel/rust-pretty-assertions/blob/main/CHANGELOG.md)
+  - [Commits](https://github.com/colin-kiegel/rust-pretty-assertions/compare/v0.7.1...v0.7.2)
+
+* Bump regex from 1.4.5 to 1.4.6. [dependabot[bot]]
+
+  Bumps [regex](https://github.com/rust-lang/regex) from 1.4.5 to 1.4.6.
+  - [Release notes](https://github.com/rust-lang/regex/releases)
+  - [Changelog](https://github.com/rust-lang/regex/blob/master/CHANGELOG.md)
+  - [Commits](https://github.com/rust-lang/regex/compare/1.4.5...1.4.6)
+
 ## v0.7.0 (2021-04-11)
 
 ### New
