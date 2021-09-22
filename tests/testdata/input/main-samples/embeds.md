@@ -10,6 +10,8 @@ Image embed:
 
 ![[white.png]]
 
+![[bulb.svg]]
+
 PDF embed:
 
 ![[note.pdf]]
