@@ -1,5 +1,44 @@
 # Changelog
 
+## v21.9.1 (2021-09-24)
+
+### Changes
+
+* Treat SVG files as embeddable images. [Narayan Sainaney]
+
+  This will ensure SVG files are included as an image when using `![[foo.svg]]` syntax, as opposed to only being linked to.
+
+### Other
+
+* Bump pulldown-cmark-to-cmark from 6.0.2 to 6.0.3. [dependabot[bot]]
+
+  Bumps [pulldown-cmark-to-cmark](https://github.com/Byron/pulldown-cmark-to-cmark) from 6.0.2 to 6.0.3.
+  - [Release notes](https://github.com/Byron/pulldown-cmark-to-cmark/releases)
+  - [Changelog](https://github.com/Byron/pulldown-cmark-to-cmark/blob/main/CHANGELOG.md)
+  - [Commits](https://github.com/Byron/pulldown-cmark-to-cmark/compare/v6.0.2...v6.0.3)
+
+  ---
+  updated-dependencies:
+  - dependency-name: pulldown-cmark-to-cmark
+    dependency-type: direct:production
+    update-type: version-update:semver-patch
+  ...
+
+* Bump serde_yaml from 0.8.20 to 0.8.21. [dependabot[bot]]
+
+  Bumps [serde_yaml](https://github.com/dtolnay/serde-yaml) from 0.8.20 to 0.8.21.
+  - [Release notes](https://github.com/dtolnay/serde-yaml/releases)
+  - [Commits](https://github.com/dtolnay/serde-yaml/compare/0.8.20...0.8.21)
+
+  ---
+  updated-dependencies:
+  - dependency-name: serde_yaml
+    dependency-type: direct:production
+    update-type: version-update:semver-patch
+  ...
+
+
+
 ## v21.9.0 (2021-09-12)
 
 > This release switches to a [calendar versioning scheme](https://calver.org/overview.html).

@@ -1,6 +1,6 @@
 [package]
 name = "obsidian-export"
-version = "21.9.0"
+version = "21.9.1"
 authors = ["Nick Groenen <nick@groenen.me>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
