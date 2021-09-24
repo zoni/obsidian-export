@@ -11,6 +11,8 @@ Image embed:
 
 ![white.png](white.png)
 
+![bulb.svg](bulb.svg)
+
 PDF embed:
 
 [note.pdf](note.pdf)

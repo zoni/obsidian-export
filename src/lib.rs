@@ -627,7 +627,7 @@ impl<'a> Exporter<'a> {
                 }
                 events
             }
-            Some("png") | Some("jpg") | Some("jpeg") | Some("gif") | Some("webp") => {
+            Some("png") | Some("jpg") | Some("jpeg") | Some("gif") | Some("webp") | Some("svg") => {
                 self.make_link_to_file(note_ref, &child_context)
                     .into_iter()
                     .map(|event| match event {
