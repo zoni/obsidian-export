@@ -16,7 +16,7 @@ pub use walker::{vault_contents, WalkOptions};
 use frontmatter::{frontmatter_from_str, frontmatter_to_str};
 use pathdiff::diff_paths;
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
-use pulldown_cmark::{CodeBlockKind, CowStr, Event, Options, Parser, Tag};
+use pulldown_cmark::{CodeBlockKind, CowStr, Event, HeadingLevel, Options, Parser, Tag};
 use pulldown_cmark_to_cmark::cmark_with_options;
 use rayon::prelude::*;
 use references::*;
@@ -792,14 +792,15 @@ fn reduce_to_section<'a, 'b>(events: MarkdownEvents<'a>, section: &'b str) -> Ma
     let mut filtered_events = Vec::with_capacity(events.len());
     let mut target_section_encountered = false;
     let mut currently_in_target_section = false;
-    let mut section_level = 0;
-    let mut last_level = 0;
+    let mut section_level = HeadingLevel::H1;
+    let mut last_level = HeadingLevel::H1;
     let mut last_tag_was_heading = false;
 
     for event in events.into_iter() {
         filtered_events.push(event.clone());
         match event {
-            Event::Start(Tag::Heading(level)) => {
+            // FIXME: This should propagate fragment_identifier and classes.
+            Event::Start(Tag::Heading(level, _fragment_identifier, _classes)) => {
                 last_tag_was_heading = true;
                 last_level = level;
                 if currently_in_target_section && level <= section_level {
@@ -855,7 +856,10 @@ fn event_to_owned<'a>(event: Event) -> Event<'a> {
 fn tag_to_owned<'a>(tag: Tag) -> Tag<'a> {
     match tag {
         Tag::Paragraph => Tag::Paragraph,
-        Tag::Heading(level) => Tag::Heading(level),
+        Tag::Heading(level, _fragment_identifier, _classes) => {
+            // FIXME: This should propagate fragment_identifier and classes.
+            Tag::Heading(level, None, Vec::new())
+        }
         Tag::BlockQuote => Tag::BlockQuote,
         Tag::CodeBlock(codeblock_kind) => Tag::CodeBlock(codeblock_kind_to_owned(codeblock_kind)),
         Tag::List(optional) => Tag::List(optional),
