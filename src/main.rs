@@ -1,5 +1,6 @@
 use eyre::{eyre, Result};
 use gumdrop::Options;
+use obsidian_export::postprocessors::softbreaks_to_hardbreaks;
 use obsidian_export::{ExportError, Exporter, FrontmatterStrategy, WalkOptions};
 use std::{env, path::PathBuf};
 
@@ -46,6 +47,13 @@ struct Opts {
 
     #[options(no_short, help = "Don't process embeds recursively", default = "false")]
     no_recursive_embeds: bool,
+
+    #[options(
+        no_short,
+        help = "Convert soft line breaks to hard line breaks. This mimics Obsidian's 'Strict line breaks' setting",
+        default = "false"
+    )]
+    hard_linebreaks: bool,
 }
 
 fn frontmatter_strategy_from_str(input: &str) -> Result<FrontmatterStrategy> {
@@ -81,6 +89,10 @@ fn main() {
     exporter.frontmatter_strategy(args.frontmatter_strategy);
     exporter.process_embeds_recursively(!args.no_recursive_embeds);
     exporter.walk_options(walk_options);
+
+    if args.hard_linebreaks {
+        exporter.add_postprocessor(&softbreaks_to_hardbreaks);
+    }
 
     if let Some(path) = args.start_at {
         exporter.start_at(path);

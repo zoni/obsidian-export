@@ -1,3 +1,4 @@
+use obsidian_export::postprocessors::softbreaks_to_hardbreaks;
 use obsidian_export::{Context, Exporter, MarkdownEvents, PostprocessorResult};
 use pretty_assertions::assert_eq;
 use pulldown_cmark::{CowStr, Event};
@@ -207,4 +208,26 @@ fn test_embed_postprocessors_context() {
     });
 
     exporter.run().unwrap();
+}
+
+#[test]
+fn test_softbreaks_to_hardbreaks() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+    let mut exporter = Exporter::new(
+        PathBuf::from("tests/testdata/input/postprocessors"),
+        tmp_dir.path().to_path_buf(),
+    );
+    exporter.add_postprocessor(&softbreaks_to_hardbreaks);
+    exporter.run().unwrap();
+
+    let expected =
+        read_to_string("tests/testdata/expected/postprocessors/hard_linebreaks.md").unwrap();
+    let actual = read_to_string(
+        tmp_dir
+            .path()
+            .clone()
+            .join(PathBuf::from("hard_linebreaks.md")),
+    )
+    .unwrap();
+    assert_eq!(expected, actual);
 }
