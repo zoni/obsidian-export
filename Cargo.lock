@@ -307,7 +307,7 @@ dependencies = [
 
 [[package]]
 name = "obsidian-export"
-version = "21.9.1"
+version = "22.1.0"
 dependencies = [
  "eyre",
  "gumdrop",

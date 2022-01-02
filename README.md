@@ -12,14 +12,13 @@ WARNING:
 
 -->
 
-
 # Obsidian Export
 
-*Obsidian Export is a CLI program and a Rust library to export an [Obsidian](https://obsidian.md/) vault to regular Markdown.*
+*Obsidian Export is a CLI program and a Rust library to export an [Obsidian] vault to regular Markdown.*
 
-* Recursively export Obsidian Markdown files to [CommonMark](https://commonmark.org/).
+* Recursively export Obsidian Markdown files to [CommonMark].
 * Supports `[[note]]`-style references as well as `![[note]]` file includes.
-* Support for [gitignore](https://git-scm.com/docs/gitignore)-style exclude patterns (default: `.export-ignore`).
+* Support for [gitignore]-style exclude patterns (default: `.export-ignore`).
 * Automatically excludes files that are ignored by Git when the vault is located in a Git repository.
 * Runs on all major platforms: Windows, Mac, Linux, BSDs.
 
@@ -34,18 +33,18 @@ It supports most but not all of Obsidian's Markdown flavor.
 Binary releases for x86-64 processors are provided for Windows, Linux and Mac operating systems on a best-effort basis.
 They are built with GitHub runners as part of the release workflow defined in `.github/workflows/release.yml`.
 
-The resulting binaries can be downloaded from [https://github.com/zoni/obsidian-export/releases](https://github.com/zoni/obsidian-export/releases)
+The resulting binaries can be downloaded from <https://github.com/zoni/obsidian-export/releases>
 
 ## Building from source
 
 When binary releases are unavailable for your platform, or you do not trust the pre-built binaries, then *obsidian-export* can be compiled from source with relatively little effort.
-This is done through [Cargo](https://doc.rust-lang.org/cargo/), the official package manager for Rust, with the following steps:
+This is done through [Cargo], the official package manager for Rust, with the following steps:
 
-1. Install the Rust toolchain from [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install)
+1. Install the Rust toolchain from <https://www.rust-lang.org/tools/install>
 1. Run: `cargo install obsidian-export`
 
  > 
- > It is expected that you successfully configured the PATH variable correctly while installing the Rust toolchain, as described under *"Configuring the PATH environment variable"* on [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install).
+ > It is expected that you successfully configured the PATH variable correctly while installing the Rust toolchain, as described under *"Configuring the PATH environment variable"* on <https://www.rust-lang.org/tools/install>.
 
 ## Upgrading from earlier versions
 
@@ -149,7 +148,7 @@ Embeds of ignored notes will be skipped entirely.
 
 ### Ignorefile syntax
 
-The syntax for `.export-ignore` files is identical to that of [gitignore](https://git-scm.com/docs/gitignore) files.
+The syntax for `.export-ignore` files is identical to that of [gitignore] files.
 Here's an example:
 
 ````
@@ -163,7 +162,7 @@ test
 !special.pdf
 ````
 
-For more comprehensive documentation and examples, see the [gitignore](https://git-scm.com/docs/gitignore) manpage.
+For more comprehensive documentation and examples, see the [gitignore] manpage.
 
 ## Recursive embeds
 
@@ -177,12 +176,12 @@ Using this mode, if a note is encountered for a second time while processing the
 
 ## Relative links with Hugo
 
-The [Hugo](https://gohugo.io) static site generator [does not support relative links to files](https://notes.nick.groenen.me/notes/relative-linking-in-hugo/).
-Instead, it expects you to link to other pages using the [`ref` and `relref` shortcodes](https://gohugo.io/content-management/cross-references/).
+The [Hugo] static site generator [does not support relative links to files](https://notes.nick.groenen.me/notes/relative-linking-in-hugo/).
+Instead, it expects you to link to other pages using the [`ref` and `relref` shortcodes].
 
 As a result of this, notes that have been exported from Obsidian using obsidian-export do not work out of the box because Hugo doesn't resolve these links correctly.
 
-[Markdown Render Hooks](https://gohugo.io/getting-started/configuration-markup#markdown-render-hooks) (only supported using the default `goldmark` renderer) allow you to work around this issue however, making exported notes work with Hugo after a bit of one-time setup work.
+[Markdown Render Hooks] (only supported using the default `goldmark` renderer) allow you to work around this issue however, making exported notes work with Hugo after a bit of one-time setup work.
 
 Create the file `layouts/_default/_markup/render-link.html` with the following contents:
 
@@ -246,12 +245,174 @@ To get started, visit the library documentation on [obsidian_export](https://doc
 
 # License
 
-Obsidian-export is dual-licensed under the [Apache 2.0](https://github.com/zoni/obsidian-export/blob/master/LICENSE-APACHE) and the [MIT](https://github.com/zoni/obsidian-export/blob/master/LICENSE-MIT) licenses.
+Obsidian-export is dual-licensed under the [Apache 2.0] and the [MIT] licenses.
 
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in this project by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
 
 
 # Changelog
+
+## v22.1.0 (2022-01-02)
+
+Happy new year! On this second day of 2022 comes a fresh release with one
+notable new feature.
+
+### New
+
+* Support Obsidian's "Strict line breaks" setting. \[Nick Groenen\]
+  
+  This change introduces a new `--hard-linebreaks` CLI argument. When
+  used, this converts soft line breaks to hard line breaks, mimicking
+  Obsidian's "Strict line breaks" setting.
+  
+   > 
+   > Implementation detail: I considered naming this flag
+   > `--strict-line-breaks` to be consistent with Obsidian itself, however I
+   > feel the name is somewhat misleading and ill-chosen.
+
+### Other
+
+* Give release binaries file extensions. \[Nick Groenen\]
+  
+  This may make it more clear to users that these are precompiled, binary
+  files. This is especially relevant on Windows, where the convention is
+  that executable files have a `.exe` extension, as seen in #49.
+
+* Upgrade dependencies. \[Nick Groenen\]
+  
+  This commit upgrades all dependencies to their current latest versions. Most
+  notably, this includes upgrades to the following most critical libraries:
+  
+  ````
+  pulldown-cmark v0.8.0 -> v0.9.0
+  pulldown-cmark-to-cmark v7.1.1 -> v9.0.0
+  ````
+  
+  In total, these dependencies were upgraded:
+  
+  ````
+  bstr v0.2.16 -> v0.2.17
+  ignore v0.4.17 -> v0.4.18
+  libc v0.2.101 -> v0.2.112
+  memoffset v0.6.4 -> v0.6.5
+  num_cpus v1.13.0 -> v1.13.1
+  once_cell v1.8.0 -> v1.9.0
+  ppv-lite86 v0.2.10 -> v0.2.16
+  proc-macro2 v1.0.29 -> v1.0.36
+  pulldown-cmark v0.8.0 -> v0.9.0
+  pulldown-cmark-to-cmark v7.1.1 -> v9.0.0
+  quote v1.0.9 -> v1.0.14
+  rayon v1.5.0 -> v1.5.1
+  regex v1.5.3 -> v1.5.4
+  serde v1.0.130 -> v1.0.132
+  syn v1.0.75 -> v1.0.84
+  unicode-width v0.1.8 -> v0.1.9
+  version_check v0.9.3 -> v0.9.4
+  ````
+
+* Bump serde_yaml from 0.8.21 to 0.8.23 (#52) \[dependabot\[bot\]\]
+  
+  Bumps [serde_yaml](https://github.com/dtolnay/serde-yaml) from 0.8.21 to 0.8.23.
+  
+  * [Release notes](https://github.com/dtolnay/serde-yaml/releases)
+  * [Commits](https://github.com/dtolnay/serde-yaml/compare/0.8.21...0.8.23)
+  ---
+  
+  updated-dependencies:
+  
+  * dependency-name: serde_yaml
+    dependency-type: direct:production
+    update-type: version-update:semver-patch
+    ...
+* Bump pulldown-cmark-to-cmark from 7.1.0 to 7.1.1 (#51) \[dependabot\[bot\]\]
+  
+  Bumps [pulldown-cmark-to-cmark](https://github.com/Byron/pulldown-cmark-to-cmark) from 7.1.0 to 7.1.1.
+  
+  * [Release notes](https://github.com/Byron/pulldown-cmark-to-cmark/releases)
+  * [Changelog](https://github.com/Byron/pulldown-cmark-to-cmark/blob/main/CHANGELOG.md)
+  * [Commits](https://github.com/Byron/pulldown-cmark-to-cmark/compare/v7.1.0...v7.1.1)
+  ---
+  
+  updated-dependencies:
+  
+  * dependency-name: pulldown-cmark-to-cmark
+    dependency-type: direct:production
+    update-type: version-update:semver-patch
+    ...
+* Bump pulldown-cmark-to-cmark from 7.0.0 to 7.1.0 (#48) \[dependabot\[bot\]\]
+  
+  Bumps [pulldown-cmark-to-cmark](https://github.com/Byron/pulldown-cmark-to-cmark) from 7.0.0 to 7.1.0.
+  
+  * [Release notes](https://github.com/Byron/pulldown-cmark-to-cmark/releases)
+  * [Changelog](https://github.com/Byron/pulldown-cmark-to-cmark/blob/main/CHANGELOG.md)
+  * [Commits](https://github.com/Byron/pulldown-cmark-to-cmark/compare/v7.0.0...v7.1.0)
+  ---
+  
+  updated-dependencies:
+  
+  * dependency-name: pulldown-cmark-to-cmark
+    dependency-type: direct:production
+    update-type: version-update:semver-minor
+    ...
+* Bump pulldown-cmark-to-cmark from 6.0.4 to 7.0.0 (#47) \[dependabot\[bot\]\]
+  
+  Bumps [pulldown-cmark-to-cmark](https://github.com/Byron/pulldown-cmark-to-cmark) from 6.0.4 to 7.0.0.
+  
+  * [Release notes](https://github.com/Byron/pulldown-cmark-to-cmark/releases)
+  * [Changelog](https://github.com/Byron/pulldown-cmark-to-cmark/blob/main/CHANGELOG.md)
+  * [Commits](https://github.com/Byron/pulldown-cmark-to-cmark/compare/v6.0.4...v7.0.0)
+  ---
+  
+  updated-dependencies:
+  
+  * dependency-name: pulldown-cmark-to-cmark
+    dependency-type: direct:production
+    update-type: version-update:semver-major
+    ...
+* Bump pathdiff from 0.2.0 to 0.2.1 (#46) \[dependabot\[bot\]\]
+  
+  Bumps [pathdiff](https://github.com/Manishearth/pathdiff) from 0.2.0 to 0.2.1.
+  
+  * [Release notes](https://github.com/Manishearth/pathdiff/releases)
+  * [Commits](https://github.com/Manishearth/pathdiff/commits)
+  ---
+  
+  updated-dependencies:
+  
+  * dependency-name: pathdiff
+    dependency-type: direct:production
+    update-type: version-update:semver-patch
+    ...
+* Bump pulldown-cmark-to-cmark from 6.0.3 to 6.0.4 (#44) \[dependabot\[bot\]\]
+  
+  Bumps [pulldown-cmark-to-cmark](https://github.com/Byron/pulldown-cmark-to-cmark) from 6.0.3 to 6.0.4.
+  
+  * [Release notes](https://github.com/Byron/pulldown-cmark-to-cmark/releases)
+  * [Changelog](https://github.com/Byron/pulldown-cmark-to-cmark/blob/main/CHANGELOG.md)
+  * [Commits](https://github.com/Byron/pulldown-cmark-to-cmark/compare/v6.0.3...v6.0.4)
+  ---
+  
+  updated-dependencies:
+  
+  * dependency-name: pulldown-cmark-to-cmark
+    dependency-type: direct:production
+    update-type: version-update:semver-patch
+    ...
+* Bump pretty_assertions from 0.7.2 to 1.0.0 (#45) \[dependabot\[bot\]\]
+  
+  Bumps [pretty_assertions](https://github.com/colin-kiegel/rust-pretty-assertions) from 0.7.2 to 1.0.0.
+  
+  * [Release notes](https://github.com/colin-kiegel/rust-pretty-assertions/releases)
+  * [Changelog](https://github.com/colin-kiegel/rust-pretty-assertions/blob/main/CHANGELOG.md)
+  * [Commits](https://github.com/colin-kiegel/rust-pretty-assertions/compare/v0.7.2...v1.0.0)
+  ---
+  
+  updated-dependencies:
+  
+  * dependency-name: pretty_assertions
+    dependency-type: direct:production
+    update-type: version-update:semver-major
+    ...
 
 ## v21.9.1 (2021-09-24)
 
@@ -583,7 +744,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
   There are also some differences between the various Markdown rendering
   implementations.
   
-  Obsidian-export uses the [slug](https://crates.io/crates/slug) crate to generate anchors which should
+  Obsidian-export uses the [slug] crate to generate anchors which should
   be compatible with most implementations, however your mileage may vary.
   
   (For example, GitHub may leave a trailing `-` on anchors when headings
@@ -596,7 +757,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
   the entire file into the source note. Now, such embeds will only include
   the contents of the referenced heading (and any subheadings).
   
-  Links and embeds of [arbitrary blocks](https://publish.obsidian.md/help/How+to/Link+to+blocks) remains unsupported at this time.
+  Links and embeds of [arbitrary blocks] remains unsupported at this time.
 
 ### Changes
 
@@ -651,7 +812,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 * Setup gitchangelog. \[Nick Groenen\]
   
   This adds a changelog (CHANGES.md) which is automatically generated with
-  [gitchangelog](https://github.com/vaab/gitchangelog).
+  [gitchangelog].
 
 ## v0.2.0 (2020-12-13)
 
@@ -675,3 +836,18 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 ## v0.1.0 (2020-11-28)
 
 * Public release. \[Nick Groenen\]
+
+[Obsidian]: https://obsidian.md/
+[CommonMark]: https://commonmark.org/
+[gitignore]: https://git-scm.com/docs/gitignore
+[Cargo]: https://doc.rust-lang.org/cargo/
+[gitignore]: https://git-scm.com/docs/gitignore
+[gitignore]: https://git-scm.com/docs/gitignore
+[Hugo]: https://gohugo.io
+[ and  shortcodes]: https://gohugo.io/content-management/cross-references/
+[Markdown Render Hooks]: https://gohugo.io/getting-started/configuration-markup#markdown-render-hooks
+[Apache 2.0]: https://github.com/zoni/obsidian-export/blob/master/LICENSE-APACHE
+[MIT]: https://github.com/zoni/obsidian-export/blob/master/LICENSE-MIT
+[slug]: https://crates.io/crates/slug
+[arbitrary blocks]: https://publish.obsidian.md/help/How+to/Link+to+blocks
+[gitchangelog]: https://github.com/vaab/gitchangelog

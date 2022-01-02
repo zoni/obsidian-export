@@ -1,5 +1,154 @@
 # Changelog
 
+## v22.1.0 (2022-01-02)
+
+Happy new year! On this second day of 2022 comes a fresh release with one
+notable new feature.
+
+### New
+
+* Support Obsidian's "Strict line breaks" setting. [Nick Groenen]
+
+  This change introduces a new `--hard-linebreaks` CLI argument. When
+  used, this converts soft line breaks to hard line breaks, mimicking
+  Obsidian's "Strict line breaks" setting.
+
+  > Implementation detail: I considered naming this flag
+  > `--strict-line-breaks` to be consistent with Obsidian itself, however I
+  > feel the name is somewhat misleading and ill-chosen.
+
+### Other
+
+* Give release binaries file extensions. [Nick Groenen]
+
+  This may make it more clear to users that these are precompiled, binary
+  files. This is especially relevant on Windows, where the convention is
+  that executable files have a `.exe` extension, as seen in #49.
+
+* Upgrade dependencies. [Nick Groenen]
+
+  This commit upgrades all dependencies to their current latest versions. Most
+  notably, this includes upgrades to the following most critical libraries:
+
+      pulldown-cmark v0.8.0 -> v0.9.0
+      pulldown-cmark-to-cmark v7.1.1 -> v9.0.0
+
+  In total, these dependencies were upgraded:
+
+      bstr v0.2.16 -> v0.2.17
+      ignore v0.4.17 -> v0.4.18
+      libc v0.2.101 -> v0.2.112
+      memoffset v0.6.4 -> v0.6.5
+      num_cpus v1.13.0 -> v1.13.1
+      once_cell v1.8.0 -> v1.9.0
+      ppv-lite86 v0.2.10 -> v0.2.16
+      proc-macro2 v1.0.29 -> v1.0.36
+      pulldown-cmark v0.8.0 -> v0.9.0
+      pulldown-cmark-to-cmark v7.1.1 -> v9.0.0
+      quote v1.0.9 -> v1.0.14
+      rayon v1.5.0 -> v1.5.1
+      regex v1.5.3 -> v1.5.4
+      serde v1.0.130 -> v1.0.132
+      syn v1.0.75 -> v1.0.84
+      unicode-width v0.1.8 -> v0.1.9
+      version_check v0.9.3 -> v0.9.4
+
+* Bump serde_yaml from 0.8.21 to 0.8.23 (#52) [dependabot[bot]]
+
+  Bumps [serde_yaml](https://github.com/dtolnay/serde-yaml) from 0.8.21 to 0.8.23.
+  - [Release notes](https://github.com/dtolnay/serde-yaml/releases)
+  - [Commits](https://github.com/dtolnay/serde-yaml/compare/0.8.21...0.8.23)
+
+  ---
+  updated-dependencies:
+  - dependency-name: serde_yaml
+    dependency-type: direct:production
+    update-type: version-update:semver-patch
+  ...
+
+* Bump pulldown-cmark-to-cmark from 7.1.0 to 7.1.1 (#51) [dependabot[bot]]
+
+  Bumps [pulldown-cmark-to-cmark](https://github.com/Byron/pulldown-cmark-to-cmark) from 7.1.0 to 7.1.1.
+  - [Release notes](https://github.com/Byron/pulldown-cmark-to-cmark/releases)
+  - [Changelog](https://github.com/Byron/pulldown-cmark-to-cmark/blob/main/CHANGELOG.md)
+  - [Commits](https://github.com/Byron/pulldown-cmark-to-cmark/compare/v7.1.0...v7.1.1)
+
+  ---
+  updated-dependencies:
+  - dependency-name: pulldown-cmark-to-cmark
+    dependency-type: direct:production
+    update-type: version-update:semver-patch
+  ...
+
+* Bump pulldown-cmark-to-cmark from 7.0.0 to 7.1.0 (#48) [dependabot[bot]]
+
+  Bumps [pulldown-cmark-to-cmark](https://github.com/Byron/pulldown-cmark-to-cmark) from 7.0.0 to 7.1.0.
+  - [Release notes](https://github.com/Byron/pulldown-cmark-to-cmark/releases)
+  - [Changelog](https://github.com/Byron/pulldown-cmark-to-cmark/blob/main/CHANGELOG.md)
+  - [Commits](https://github.com/Byron/pulldown-cmark-to-cmark/compare/v7.0.0...v7.1.0)
+
+  ---
+  updated-dependencies:
+  - dependency-name: pulldown-cmark-to-cmark
+    dependency-type: direct:production
+    update-type: version-update:semver-minor
+  ...
+
+* Bump pulldown-cmark-to-cmark from 6.0.4 to 7.0.0 (#47) [dependabot[bot]]
+
+  Bumps [pulldown-cmark-to-cmark](https://github.com/Byron/pulldown-cmark-to-cmark) from 6.0.4 to 7.0.0.
+  - [Release notes](https://github.com/Byron/pulldown-cmark-to-cmark/releases)
+  - [Changelog](https://github.com/Byron/pulldown-cmark-to-cmark/blob/main/CHANGELOG.md)
+  - [Commits](https://github.com/Byron/pulldown-cmark-to-cmark/compare/v6.0.4...v7.0.0)
+
+  ---
+  updated-dependencies:
+  - dependency-name: pulldown-cmark-to-cmark
+    dependency-type: direct:production
+    update-type: version-update:semver-major
+  ...
+
+* Bump pathdiff from 0.2.0 to 0.2.1 (#46) [dependabot[bot]]
+
+  Bumps [pathdiff](https://github.com/Manishearth/pathdiff) from 0.2.0 to 0.2.1.
+  - [Release notes](https://github.com/Manishearth/pathdiff/releases)
+  - [Commits](https://github.com/Manishearth/pathdiff/commits)
+
+  ---
+  updated-dependencies:
+  - dependency-name: pathdiff
+    dependency-type: direct:production
+    update-type: version-update:semver-patch
+  ...
+
+* Bump pulldown-cmark-to-cmark from 6.0.3 to 6.0.4 (#44) [dependabot[bot]]
+
+  Bumps [pulldown-cmark-to-cmark](https://github.com/Byron/pulldown-cmark-to-cmark) from 6.0.3 to 6.0.4.
+  - [Release notes](https://github.com/Byron/pulldown-cmark-to-cmark/releases)
+  - [Changelog](https://github.com/Byron/pulldown-cmark-to-cmark/blob/main/CHANGELOG.md)
+  - [Commits](https://github.com/Byron/pulldown-cmark-to-cmark/compare/v6.0.3...v6.0.4)
+
+  ---
+  updated-dependencies:
+  - dependency-name: pulldown-cmark-to-cmark
+    dependency-type: direct:production
+    update-type: version-update:semver-patch
+  ...
+
+* Bump pretty_assertions from 0.7.2 to 1.0.0 (#45) [dependabot[bot]]
+
+  Bumps [pretty_assertions](https://github.com/colin-kiegel/rust-pretty-assertions) from 0.7.2 to 1.0.0.
+  - [Release notes](https://github.com/colin-kiegel/rust-pretty-assertions/releases)
+  - [Changelog](https://github.com/colin-kiegel/rust-pretty-assertions/blob/main/CHANGELOG.md)
+  - [Commits](https://github.com/colin-kiegel/rust-pretty-assertions/compare/v0.7.2...v1.0.0)
+
+  ---
+  updated-dependencies:
+  - dependency-name: pretty_assertions
+    dependency-type: direct:production
+    update-type: version-update:semver-major
+  ...
+
 ## v21.9.1 (2021-09-24)
 
 ### Changes
