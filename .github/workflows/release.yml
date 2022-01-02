@@ -53,7 +53,7 @@ jobs:
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
           asset_path: target/release/obsidian-export
-          asset_name: obsidian-export_Linux-x86_64
+          asset_name: obsidian-export_Linux-x86_64.bin
           asset_content_type: application/octet-stream
 
   build-windows:
@@ -87,7 +87,7 @@ jobs:
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
           asset_path: target/release/obsidian-export.exe
-          asset_name: obsidian-export_Windows-x64_64
+          asset_name: obsidian-export_Windows-x64_64.exe
           asset_content_type: application/octet-stream
 
   build-macos:
@@ -121,5 +121,5 @@ jobs:
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
           asset_path: target/release/obsidian-export
-          asset_name: obsidian-export_MacOS-x86_64
+          asset_name: obsidian-export_MacOS-x86_64.bin
           asset_content_type: application/octet-stream
