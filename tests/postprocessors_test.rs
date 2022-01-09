@@ -8,30 +8,22 @@ use std::path::PathBuf;
 use tempfile::TempDir;
 
 /// This postprocessor replaces any instance of "foo" with "bar" in the note body.
-fn foo_to_bar(
-    ctx: Context,
-    events: MarkdownEvents,
-) -> (Context, MarkdownEvents, PostprocessorResult) {
-    let events = events
-        .into_iter()
-        .map(|event| match event {
-            Event::Text(text) => Event::Text(CowStr::from(text.replace("foo", "bar"))),
-            event => event,
-        })
-        .collect();
-    (ctx, events, PostprocessorResult::Continue)
+fn foo_to_bar(_ctx: &mut Context, events: &mut MarkdownEvents) -> PostprocessorResult {
+    for event in events.iter_mut() {
+        if let Event::Text(text) = event {
+            *event = Event::Text(CowStr::from(text.replace("foo", "bar")))
+        }
+    }
+    PostprocessorResult::Continue
 }
 
 /// This postprocessor appends "bar: baz" to frontmatter.
-fn append_frontmatter(
-    mut ctx: Context,
-    events: MarkdownEvents,
-) -> (Context, MarkdownEvents, PostprocessorResult) {
+fn append_frontmatter(ctx: &mut Context, _events: &mut MarkdownEvents) -> PostprocessorResult {
     ctx.frontmatter.insert(
         Value::String("bar".to_string()),
         Value::String("baz".to_string()),
     );
-    (ctx, events, PostprocessorResult::Continue)
+    PostprocessorResult::Continue
 }
 
 // The purpose of this test to verify the `append_frontmatter` postprocessor is called to extend
@@ -62,9 +54,8 @@ fn test_postprocessor_stophere() {
         tmp_dir.path().to_path_buf(),
     );
 
-    exporter.add_postprocessor(&|ctx, mdevents| (ctx, mdevents, PostprocessorResult::StopHere));
-    exporter
-        .add_embed_postprocessor(&|ctx, mdevents| (ctx, mdevents, PostprocessorResult::StopHere));
+    exporter.add_postprocessor(&|_ctx, _mdevents| PostprocessorResult::StopHere);
+    exporter.add_embed_postprocessor(&|_ctx, _mdevents| PostprocessorResult::StopHere);
     exporter.add_postprocessor(&|_, _| panic!("should not be called due to above processor"));
     exporter.add_embed_postprocessor(&|_, _| panic!("should not be called due to above processor"));
     exporter.run().unwrap();
@@ -84,8 +75,7 @@ fn test_postprocessor_stop_and_skip() {
     assert!(note_path.exists());
     remove_file(&note_path).unwrap();
 
-    exporter
-        .add_postprocessor(&|ctx, mdevents| (ctx, mdevents, PostprocessorResult::StopAndSkipNote));
+    exporter.add_postprocessor(&|_ctx, _mdevents| PostprocessorResult::StopAndSkipNote);
     exporter.run().unwrap();
 
     assert!(!note_path.exists());
@@ -104,9 +94,9 @@ fn test_postprocessor_change_destination() {
     assert!(original_note_path.exists());
     remove_file(&original_note_path).unwrap();
 
-    exporter.add_postprocessor(&|mut ctx, mdevents| {
+    exporter.add_postprocessor(&|ctx, _mdevents| {
         ctx.destination.set_file_name("MovedNote.md");
-        (ctx, mdevents, PostprocessorResult::Continue)
+        PostprocessorResult::Continue
     });
     exporter.run().unwrap();
 
@@ -147,9 +137,7 @@ fn test_embed_postprocessors_stop_and_skip() {
         PathBuf::from("tests/testdata/input/postprocessors"),
         tmp_dir.path().to_path_buf(),
     );
-    exporter.add_embed_postprocessor(&|ctx, mdevents| {
-        (ctx, mdevents, PostprocessorResult::StopAndSkipNote)
-    });
+    exporter.add_embed_postprocessor(&|_ctx, _mdevents| PostprocessorResult::StopAndSkipNote);
 
     exporter.run().unwrap();
 
@@ -171,9 +159,9 @@ fn test_embed_postprocessors_context() {
         tmp_dir.path().to_path_buf(),
     );
 
-    exporter.add_postprocessor(&|ctx, mdevents| {
+    exporter.add_postprocessor(&|ctx, _mdevents| {
         if ctx.current_file() != &PathBuf::from("Note.md") {
-            return (ctx, mdevents, PostprocessorResult::Continue);
+            return PostprocessorResult::Continue;
         }
         let is_root_note = ctx
             .frontmatter
@@ -188,9 +176,9 @@ fn test_embed_postprocessors_context() {
                 &ctx.current_file().display()
             )
         }
-        (ctx, mdevents, PostprocessorResult::Continue)
+        PostprocessorResult::Continue
     });
-    exporter.add_embed_postprocessor(&|ctx, mdevents| {
+    exporter.add_embed_postprocessor(&|ctx, _mdevents| {
         let is_root_note = ctx
             .frontmatter
             .get(&Value::String("is_root_note".to_string()))
@@ -204,7 +192,7 @@ fn test_embed_postprocessors_context() {
                 &ctx.current_file().display()
             )
         }
-        (ctx, mdevents, PostprocessorResult::Continue)
+        PostprocessorResult::Continue
     });
 
     exporter.run().unwrap();
