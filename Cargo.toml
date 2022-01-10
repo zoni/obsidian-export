@@ -42,5 +42,5 @@ snafu = "0.6.10"
 
 [dev-dependencies]
 pretty_assertions = "1.0.0"
-tempfile = "3.2.0"
+tempfile = "3.3.0"
 walkdir = "2.3.2"
