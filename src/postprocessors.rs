@@ -21,7 +21,7 @@ pub fn softbreaks_to_hardbreaks(
 /// This postprocessor converts returns a new function (closure) that searches for the specified 
 /// yaml_filter_key in a notes frontmatter. If it does not find a yaml_filter_key: true in the YAML, 
 /// it tells the exporter to StopandSkipNote
-pub fn create_yaml_includer(
+pub fn create_frontmatter_filter(
     yaml_filter_key: &str,
 ) -> impl Fn(&mut Context, &mut MarkdownEvents) -> PostprocessorResult {
     let key = serde_yaml::Value::String(yaml_filter_key.to_string());

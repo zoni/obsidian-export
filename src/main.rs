@@ -1,6 +1,6 @@
 use eyre::{eyre, Result};
 use gumdrop::Options;
-use obsidian_export::postprocessors::{softbreaks_to_hardbreaks, create_yaml_includer};
+use obsidian_export::postprocessors::{softbreaks_to_hardbreaks, create_frontmatter_filter};
 use obsidian_export::{ExportError, Exporter, FrontmatterStrategy, WalkOptions};
 use std::{env, path::PathBuf};
 
@@ -115,7 +115,7 @@ fn main() {
     exporter.walk_options(walk_options);
 
     // Adding YAML export filter if 
-    let yaml_postprocessor = create_yaml_includer(&args.front_matter_filter_key);
+    let yaml_postprocessor = create_frontmatter_filter(&args.front_matter_filter_key);
     if args.front_matter_export_filtering {
         exporter.add_postprocessor(&yaml_postprocessor);
         if args.front_matter_filter_embeds {
