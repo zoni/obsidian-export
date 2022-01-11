@@ -1,4 +1,4 @@
-use obsidian_export::postprocessors::softbreaks_to_hardbreaks;
+use obsidian_export::postprocessors::{softbreaks_to_hardbreaks, create_yaml_includer};
 use obsidian_export::{Context, Exporter, MarkdownEvents, PostprocessorResult};
 use pretty_assertions::assert_eq;
 use pulldown_cmark::{CowStr, Event};
@@ -217,5 +217,61 @@ fn test_softbreaks_to_hardbreaks() {
             .join(PathBuf::from("hard_linebreaks.md")),
     )
     .unwrap();
+    assert_eq!(expected, actual);
+}
+
+// This test verifies that yaml inclusion works as desired
+// ONLY when a .md file has the specified key set to a YAML true should it work
+#[test]
+fn test_yaml_inclusion() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+    let files = ["exlude_me.md", "include_me.md", "no_yaml.md"];
+    let desired = [false, true, false];
+
+    let mut exporter = Exporter::new(
+        PathBuf::from("tests/testdata/input/postprocessors/yaml-filtering"),
+        tmp_dir.path().to_path_buf(),
+    );
+    let yaml_postprocessor = create_yaml_includer("export");
+    exporter.add_postprocessor(&yaml_postprocessor);
+
+    // Run the exporter
+    exporter.run().unwrap();
+
+    // Check that each file is included or excluded correctly
+    files.iter().zip(desired.iter()).map(|(f, b)| {
+        let note_path = tmp_dir.path().clone().join(PathBuf::from(f));
+        assert!(note_path.exists() == *b);
+    }).collect()
+
+}
+
+// This test verifies that yaml inclusion works as desired for the embedded post-processor
+// The behavior should be that the file is only embedded *if* it's frontmatter contains export: true
+#[test]
+fn test_yaml_inclusion_embedded() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+
+    let mut exporter = Exporter::new(
+        PathBuf::from("tests/testdata/input/postprocessors/yaml-filtering"),
+        tmp_dir.path().to_path_buf(),
+    );
+
+    let yaml_postprocessor = create_yaml_includer("export");
+    exporter.add_postprocessor(&yaml_postprocessor);
+    exporter.add_embed_postprocessor(&yaml_postprocessor);
+
+    // Run the exporter
+    exporter.run().unwrap();
+
+    let expected =
+    read_to_string("tests/testdata/expected/postprocessors/yaml-filtering/included_embed.md").unwrap();
+    let actual = read_to_string(
+    tmp_dir
+        .path()
+        .clone()
+        .join(PathBuf::from("include_me.md")),
+    ).unwrap();
+
     assert_eq!(expected, actual);
 }
