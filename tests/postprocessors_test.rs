@@ -1,4 +1,4 @@
-use obsidian_export::postprocessors::{softbreaks_to_hardbreaks, create_yaml_includer};
+use obsidian_export::postprocessors::{softbreaks_to_hardbreaks, create_frontmatter_filter};
 use obsidian_export::{Context, Exporter, MarkdownEvents, PostprocessorResult};
 use pretty_assertions::assert_eq;
 use pulldown_cmark::{CowStr, Event};
@@ -232,7 +232,7 @@ fn test_yaml_inclusion() {
         PathBuf::from("tests/testdata/input/postprocessors/yaml-filtering"),
         tmp_dir.path().to_path_buf(),
     );
-    let yaml_postprocessor = create_yaml_includer("export");
+    let yaml_postprocessor = create_frontmatter_filter("export");
     exporter.add_postprocessor(&yaml_postprocessor);
 
     // Run the exporter
@@ -257,7 +257,7 @@ fn test_yaml_inclusion_embedded() {
         tmp_dir.path().to_path_buf(),
     );
 
-    let yaml_postprocessor = create_yaml_includer("export");
+    let yaml_postprocessor = create_frontmatter_filter("export");
     exporter.add_postprocessor(&yaml_postprocessor);
     exporter.add_embed_postprocessor(&yaml_postprocessor);
 
