@@ -57,27 +57,27 @@ struct Opts {
 
     #[options(
         no_short,
-        long="front-matter-export-filtering",
+        long="frontmatter-export-filtering",
         help="Exclude all files from export that do not have a matching YAML key set to true in the frontmatter",
         default="false"
     )]
-    front_matter_export_filtering: bool,
+    frontmatter_export_filtering: bool,
 
     #[options(
         no_short,
-        long = "front-matter-filter-key",
+        long = "frontmatter-filter-key",
         help = "YAML key to use if front-matter-filtering is enables",
         default = "export"
     )]
-    front_matter_filter_key: String,
+    frontmatter_filter_key: String,
 
     #[options(
         no_short,
-        long = "front-matter-filter-embeds",
+        long = "frontmatter-filter-embeds",
         help = "Exclude all embeds that do not have the front-matter-inclusion-key",
         default = "false"
     )]
-    front_matter_filter_embeds: bool,
+    frontmatter_filter_embeds: bool,
 }
 
 fn frontmatter_strategy_from_str(input: &str) -> Result<FrontmatterStrategy> {
@@ -115,10 +115,10 @@ fn main() {
     exporter.walk_options(walk_options);
 
     // Adding YAML export filter if 
-    let yaml_postprocessor = create_frontmatter_filter(&args.front_matter_filter_key);
-    if args.front_matter_export_filtering {
+    let yaml_postprocessor = create_frontmatter_filter(&args.frontmatter_filter_key);
+    if args.frontmatter_export_filtering {
         exporter.add_postprocessor(&yaml_postprocessor);
-        if args.front_matter_filter_embeds {
+        if args.frontmatter_filter_embeds {
             exporter.add_embed_postprocessor(&yaml_postprocessor);
         }
     }
