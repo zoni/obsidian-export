@@ -18,18 +18,13 @@ pub fn softbreaks_to_hardbreaks(
     PostprocessorResult::Continue
 }
 
-// This function takes as input the YAML key to look for, then returns a new function (technically:
-// a closure) which matches the signature of a postprocessor.
-//
-// This use of dynamic function building allows the capturing of the configuration (in this case
-// the YAML key) without needing to store this data within the Exporter struct.
-//
-// (Ideally we could mark the return value as `-> impl Postprocessor` for readability, but we
-// cannot use a type alias here, which is what `Postprocessor` is)
+/// This postprocessor converts returns a new function (closure) that searches for the specified 
+/// yaml_filter_key in a notes frontmatter. If it does not find a yaml_filter_key: true in the YAML, 
+/// it tells the exporter to StopandSkipNote
 pub fn create_yaml_includer(
-    yaml_inclusion_key: &str,
+    yaml_filter_key: &str,
 ) -> impl Fn(&mut Context, &mut MarkdownEvents) -> PostprocessorResult {
-    let key = serde_yaml::Value::String(yaml_inclusion_key.to_string());
+    let key = serde_yaml::Value::String(yaml_filter_key.to_string());
 
     // This bit creates and returns the closure. The `move` statement is needed to make it take
     // ownership of `key` above.

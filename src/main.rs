@@ -58,7 +58,7 @@ struct Opts {
     #[options(
         no_short,
         long="front-matter-export-filtering",
-        help="Enables selectively exporting files only if they have matching YAML key set to true in the frontmatter",
+        help="Exclude all files from export that do not have a matching YAML key set to true in the frontmatter",
         default="false"
     )]
     front_matter_export_filtering: bool,
