@@ -18,16 +18,30 @@ pub fn softbreaks_to_hardbreaks(
     PostprocessorResult::Continue
 }
 
-/// This postprocessor converts returns a new function (closure) that searches for the specified 
-/// yaml_filter_key in a notes frontmatter. If it does not find a yaml_filter_key: true in the YAML, 
-/// it tells the exporter to StopandSkipNote
+/// Create a new postprocessor which skips any notes that don't have the given `yaml_filter_key`
+/// set to a truthy value in their frontmatter.
+///
+/// Initialize this as follows:
+///
+/// ```
+/// use obsidian_export::Exporter;
+/// use obsidian_export::postprocessors::create_frontmatter_filter;
+/// # use std::path::PathBuf;
+/// # use tempfile::TempDir;
+///
+/// # let tmp_dir = TempDir::new().expect("failed to make tempdir");
+/// # let source = PathBuf::from("tests/testdata/input/postprocessors");
+/// # let destination = tmp_dir.path().to_path_buf();
+/// let mut exporter = Exporter::new(source, destination);
+/// let filter = create_frontmatter_filter("export");
+/// exporter.add_postprocessor(&filter);
+/// # exporter.run().unwrap();
+/// ```
 pub fn create_frontmatter_filter(
     yaml_filter_key: &str,
 ) -> impl Fn(&mut Context, &mut MarkdownEvents) -> PostprocessorResult {
     let key = serde_yaml::Value::String(yaml_filter_key.to_string());
 
-    // This bit creates and returns the closure. The `move` statement is needed to make it take
-    // ownership of `key` above.
     move |context: &mut Context, _events: &mut MarkdownEvents| {
         match context.frontmatter.get(&key) {
             Some(Value::Bool(true)) => PostprocessorResult::Continue,

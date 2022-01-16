@@ -58,7 +58,7 @@ struct Opts {
     #[options(
         no_short,
         long="filter-by-frontmatter"
-        help="Exclude all files from export that do not have a matching YAML key set to true in the frontmatter",
+        help="Only export notes that have FRONTMATTER-FILTER-KEY set to true in their frontmatter",
         default="false"
     )]
     frontmatter_export_filtering: bool,
@@ -66,7 +66,7 @@ struct Opts {
     #[options(
         no_short,
         long = "frontmatter-filter-key",
-        help = "YAML key to use if front-matter-filtering is enables",
+        help = "YAML key to use when filtering by frontmatter",
         default = "export"
     )]
     frontmatter_filter_key: String,
@@ -74,7 +74,7 @@ struct Opts {
     #[options(
         no_short,
         long = "frontmatter-filter-embeds",
-        help = "Exclude all embeds that do not have the front-matter-inclusion-key",
+        help = "Also apply frontmatter filtering to embedded notes, instead of only checking for FRONTMATTER-FILTER-KEY to be set in the top-level note",
         default = "false"
     )]
     frontmatter_filter_embeds: bool,
@@ -114,7 +114,6 @@ fn main() {
     exporter.process_embeds_recursively(!args.no_recursive_embeds);
     exporter.walk_options(walk_options);
 
-    // Adding YAML export filter if 
     let yaml_postprocessor = create_frontmatter_filter(&args.frontmatter_filter_key);
     if args.frontmatter_export_filtering {
         exporter.add_postprocessor(&yaml_postprocessor);
