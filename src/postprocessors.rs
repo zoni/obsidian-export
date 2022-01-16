@@ -42,10 +42,8 @@ pub fn create_frontmatter_filter(
 ) -> impl Fn(&mut Context, &mut MarkdownEvents) -> PostprocessorResult {
     let key = serde_yaml::Value::String(yaml_filter_key.to_string());
 
-    move |context: &mut Context, _events: &mut MarkdownEvents| {
-        match context.frontmatter.get(&key) {
-            Some(Value::Bool(true)) => PostprocessorResult::Continue,
-            _ => PostprocessorResult::StopAndSkipNote,
-        }
+    move |context: &mut Context, _events: &mut MarkdownEvents| match context.frontmatter.get(&key) {
+        Some(Value::Bool(true)) => PostprocessorResult::Continue,
+        _ => PostprocessorResult::StopAndSkipNote,
     }
 }

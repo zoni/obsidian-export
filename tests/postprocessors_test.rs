@@ -1,4 +1,4 @@
-use obsidian_export::postprocessors::{softbreaks_to_hardbreaks, create_frontmatter_filter};
+use obsidian_export::postprocessors::{create_frontmatter_filter, softbreaks_to_hardbreaks};
 use obsidian_export::{Context, Exporter, MarkdownEvents, PostprocessorResult};
 use pretty_assertions::assert_eq;
 use pulldown_cmark::{CowStr, Event};
@@ -239,11 +239,14 @@ fn test_yaml_inclusion() {
     exporter.run().unwrap();
 
     // Check that each file is included or excluded correctly
-    files.iter().zip(desired.iter()).map(|(f, b)| {
-        let note_path = tmp_dir.path().clone().join(PathBuf::from(f));
-        assert!(note_path.exists() == *b);
-    }).collect()
-
+    files
+        .iter()
+        .zip(desired.iter())
+        .map(|(f, b)| {
+            let note_path = tmp_dir.path().clone().join(PathBuf::from(f));
+            assert!(note_path.exists() == *b);
+        })
+        .collect()
 }
 
 // This test verifies that yaml inclusion works as desired for the embedded post-processor
@@ -265,13 +268,10 @@ fn test_yaml_inclusion_embedded() {
     exporter.run().unwrap();
 
     let expected =
-    read_to_string("tests/testdata/expected/postprocessors/yaml-filtering/included_embed.md").unwrap();
-    let actual = read_to_string(
-    tmp_dir
-        .path()
-        .clone()
-        .join(PathBuf::from("include_me.md")),
-    ).unwrap();
+        read_to_string("tests/testdata/expected/postprocessors/yaml-filtering/included_embed.md")
+            .unwrap();
+    let actual =
+        read_to_string(tmp_dir.path().clone().join(PathBuf::from("include_me.md"))).unwrap();
 
     assert_eq!(expected, actual);
 }
