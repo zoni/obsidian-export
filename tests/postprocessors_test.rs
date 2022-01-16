@@ -166,7 +166,7 @@ fn test_embed_postprocessors_context() {
         let is_root_note = ctx
             .frontmatter
             .get(&Value::String("is_root_note".to_string()))
-            .unwrap();
+            .unwrap_or(&Value::Bool(false));
         if is_root_note != &Value::Bool(true) {
             // NOTE: Test failure may not give output consistently because the test binary affects
             // how output is captured and printed in the thread running this postprocessor. Just
@@ -182,7 +182,7 @@ fn test_embed_postprocessors_context() {
         let is_root_note = ctx
             .frontmatter
             .get(&Value::String("is_root_note".to_string()))
-            .unwrap();
+            .unwrap_or(&Value::Bool(false));
         if is_root_note == &Value::Bool(true) {
             // NOTE: Test failure may not give output consistently because the test binary affects
             // how output is captured and printed in the thread running this postprocessor. Just
