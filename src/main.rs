@@ -57,9 +57,9 @@ struct Opts {
 
     #[options(
         no_short,
-        long="filter-by-frontmatter"
-        help="Only export notes that have FRONTMATTER-FILTER-KEY set to true in their frontmatter",
-        default="false"
+        long = "filter-by-frontmatter",
+        help = "Only export notes that have FRONTMATTER-FILTER-KEY set to true in their frontmatter",
+        default = "false"
     )]
     frontmatter_export_filtering: bool,
 
