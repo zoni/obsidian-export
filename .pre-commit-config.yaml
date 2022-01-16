@@ -5,15 +5,25 @@ repos:
     rev: 9136088a246768144165fcc3ecc3d31bb686920a # frozen: v3.3.0
     hooks:
       - id: check-yaml
-  - repo: https://github.com/doublify/pre-commit-rust
-    rev: eeee35a89e69d5772bdee97db1a6a898467b686e # frozen: v1.0
-    hooks:
-      - id: fmt
-      - id: cargo-check
-      - id: clippy
-        args: ["--", "-D", "warnings"]
   - repo: local
     hooks:
+      - id: rustfmt
+        name: Check formatting
+        entry: cargo fmt --
+        language: system
+        files: \.rs$
+      - id: tests
+        name: Run tests
+        entry: cargo test
+        language: system
+        files: \.rs$
+        pass_filenames: false
+      - id: clippy
+        name: Check clippy lints
+        entry: cargo clippy -- -D warnings
+        language: system
+        files: \.rs$
+        pass_filenames: false
       - id: README
         name: Render README.md
         entry: docs/generate.sh
