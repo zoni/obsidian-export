@@ -4,7 +4,7 @@ here is some text
 
 A working embed
 
-- ![[_yes_embed]]
+- ![[_embed]]
 
 Should be an empty embed
 
