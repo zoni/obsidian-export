@@ -695,10 +695,15 @@ impl<'a> Exporter<'a> {
                     .unwrap_or_else(|| context.current_file().to_str().unwrap()),
                 context.current_file().display(),
             );
+            let dummy_link_tag = pulldown_cmark::Tag::Link(
+                pulldown_cmark::LinkType::Inline,
+                CowStr::from(""),
+                CowStr::from(""),
+            );
             return vec![
-                Event::Start(Tag::Emphasis),
+                Event::Start(dummy_link_tag.clone()),
                 Event::Text(CowStr::from(reference.display())),
-                Event::End(Tag::Emphasis),
+                Event::End(dummy_link_tag.clone()),
             ];
         }
         let target_file = target_file.unwrap();
