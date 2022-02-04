@@ -756,10 +756,16 @@ impl<'a> Exporter<'a> {
                     .unwrap_or_else(|| context.current_file().to_str().unwrap()),
                 context.current_file().display(),
             );
+            let dummy_link_tag = Tag::Link {
+                link_type: pulldown_cmark::LinkType::Inline,
+                dest_url: CowStr::from(""),
+                title: CowStr::from(""),
+                id: CowStr::from(""),
+            };
             return vec![
-                Event::Start(Tag::Emphasis),
+                Event::Start(dummy_link_tag.clone()),
                 Event::Text(CowStr::from(reference.display())),
-                Event::End(TagEnd::Emphasis),
+                Event::End(dummy_link_tag.to_end()),
             ];
         }
         let target_file = target_file.unwrap();
