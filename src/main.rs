@@ -61,6 +61,13 @@ struct Opts {
         default = "false"
     )]
     add_titles: bool,
+
+    #[options(
+        no_short,
+        help = "Strip out comment lines beginning with '%%'",
+        default = "false"
+    )]
+    strip_comments: bool,
 }
 
 fn frontmatter_strategy_from_str(input: &str) -> Result<FrontmatterStrategy> {
@@ -96,6 +103,7 @@ fn main() {
     exporter.frontmatter_strategy(args.frontmatter_strategy);
     exporter.process_embeds_recursively(!args.no_recursive_embeds);
     exporter.add_titles(args.add_titles);
+    exporter.strip_comments(args.strip_comments);
     exporter.walk_options(walk_options);
 
     if args.hard_linebreaks {

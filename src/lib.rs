@@ -231,6 +231,7 @@ pub struct Exporter<'a> {
     walk_options: WalkOptions<'a>,
     process_embeds_recursively: bool,
     add_titles: bool,
+    strip_comments: bool,
     postprocessors: Vec<&'a Postprocessor>,
     embed_postprocessors: Vec<&'a Postprocessor>,
 }
@@ -248,6 +249,7 @@ impl<'a> fmt::Debug for Exporter<'a> {
                 &self.process_embeds_recursively,
             )
             .field("add_titles", &self.add_titles)
+            .field("strip_comments", &self.strip_comments)
             .field(
                 "postprocessors",
                 &format!("<{} postprocessors active>", self.postprocessors.len()),
@@ -275,6 +277,7 @@ impl<'a> Exporter<'a> {
             walk_options: WalkOptions::default(),
             process_embeds_recursively: true,
             add_titles: false,
+            strip_comments: false,
             vault_contents: None,
             postprocessors: vec![],
             embed_postprocessors: vec![],
@@ -329,6 +332,14 @@ impl<'a> Exporter<'a> {
     /// of the mainline Obsidian UI when viewing notes in preview mode.
     pub fn add_titles(&mut self, add_titles: bool) -> &mut Exporter<'a> {
         self.add_titles = add_titles;
+        self
+    }
+
+    /// Strip comment lines from output.
+    ///
+    /// A comment line is one which begins with the characters "%%".
+    pub fn strip_comments(&mut self, strip_comments: bool) -> &mut Exporter<'a> {
+        self.strip_comments = strip_comments;
         self
     }
 
@@ -502,6 +513,14 @@ impl<'a> Exporter<'a> {
                         Event::Text(CowStr::Borrowed("[")) => {
                             ref_parser.ref_type = Some(RefType::Link);
                             ref_parser.transition(RefParserState::ExpectSecondOpenBracket);
+                        }
+                        Event::Text(ref s) => {
+                            // TODO: This only handles %% at beginning of line, and doesn't handle
+                            // other formatting embedded in comments
+                            if self.strip_comments && !s.starts_with("%%") {
+                                events.push(event);
+                            }
+                            buffer.clear();
                         }
                         _ => {
                             events.push(event);
