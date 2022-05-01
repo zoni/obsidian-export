@@ -74,7 +74,7 @@ jobs:
           version: "latest"
           args: "--ignore-tests"
           out-type: "Html"
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: tarpaulin-report
           path: tarpaulin-report.html
