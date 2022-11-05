@@ -391,7 +391,7 @@ impl<'a> Exporter<'a> {
             true => self.parse_and_export_obsidian_note(src, dest),
             false => copy_file(src, dest),
         }
-        .context(FileExportError { path: src })
+        .context(FileExportSnafu { path: src })
     }
 
     fn parse_and_export_obsidian_note(&self, src: &Path, dest: &Path) -> Result<()> {
@@ -416,15 +416,15 @@ impl<'a> Exporter<'a> {
         };
         if write_frontmatter {
             let mut frontmatter_str = frontmatter_to_str(context.frontmatter)
-                .context(FrontMatterEncodeError { path: src })?;
+                .context(FrontMatterEncodeSnafu { path: src })?;
             frontmatter_str.push('\n');
             outfile
                 .write_all(frontmatter_str.as_bytes())
-                .context(WriteError { path: &dest })?;
+                .context(WriteSnafu { path: &dest })?;
         }
         outfile
             .write_all(render_mdevents_to_mdtext(markdown_events).as_bytes())
-            .context(WriteError { path: &dest })?;
+            .context(WriteSnafu { path: &dest })?;
         Ok(())
     }
 
@@ -438,11 +438,11 @@ impl<'a> Exporter<'a> {
                 file_tree: context.file_tree(),
             });
         }
-        let content = fs::read_to_string(&path).context(ReadError { path })?;
+        let content = fs::read_to_string(&path).context(ReadSnafu { path })?;
         let (frontmatter, content) =
             matter::matter(&content).unwrap_or(("".to_string(), content.to_string()));
         let frontmatter =
-            frontmatter_from_str(&frontmatter).context(FrontMatterDecodeError { path })?;
+            frontmatter_from_str(&frontmatter).context(FrontMatterDecodeSnafu { path })?;
 
         let mut parser_options = Options::empty();
         parser_options.insert(Options::ENABLE_TABLES);
@@ -746,7 +746,7 @@ fn create_file(dest: &Path) -> Result<File> {
             }
             File::create(&dest)
         })
-        .context(WriteError { path: dest })?;
+        .context(WriteSnafu { path: dest })?;
     Ok(file)
 }
 
@@ -759,7 +759,7 @@ fn copy_file(src: &Path, dest: &Path) -> Result<()> {
             }
             std::fs::copy(&src, &dest)
         })
-        .context(WriteError { path: dest })?;
+        .context(WriteSnafu { path: dest })?;
     Ok(())
 }
 

@@ -38,7 +38,7 @@ rayon = "1.5.3"
 regex = "1.6.0"
 serde_yaml = "0.9.14"
 slug = "0.1.4"
-snafu = "0.6.10"
+snafu = "0.7.3"
 
 [dev-dependencies]
 pretty_assertions = "1.3.0"

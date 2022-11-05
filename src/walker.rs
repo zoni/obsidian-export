@@ -1,4 +1,4 @@
-use crate::{ExportError, WalkDirError};
+use crate::{ExportError, WalkDirSnafu};
 use ignore::{DirEntry, Walk, WalkBuilder};
 use snafu::ResultExt;
 use std::fmt;
@@ -88,9 +88,9 @@ pub fn vault_contents(path: &Path, opts: WalkOptions) -> Result<Vec<PathBuf>> {
     let mut contents = Vec::new();
     let walker = opts.build_walker(path);
     for entry in walker {
-        let entry = entry.context(WalkDirError { path })?;
+        let entry = entry.context(WalkDirSnafu { path })?;
         let path = entry.path();
-        let metadata = entry.metadata().context(WalkDirError { path })?;
+        let metadata = entry.metadata().context(WalkDirSnafu { path })?;
 
         if metadata.is_dir() {
             continue;
