@@ -730,7 +730,6 @@ fn render_mdevents_to_mdtext(markdown: MarkdownEvents) -> String {
     cmark_with_options(
         markdown.iter(),
         &mut buffer,
-        None,
         pulldown_cmark_to_cmark::Options::default(),
     )
     .expect("formatting to string not expected to fail");
