@@ -204,7 +204,7 @@ pub enum ExportError {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// Emitted by [Postprocessor]s to signal the next action to take.
 pub enum PostprocessorResult {
     /// Continue with the next post-processor (if any).
@@ -743,9 +743,7 @@ fn create_file(dest: &Path) -> Result<File> {
         .or_else(|err| {
             if err.kind() == ErrorKind::NotFound {
                 let parent = dest.parent().expect("file should have a parent directory");
-                if let Err(err) = std::fs::create_dir_all(&parent) {
-                    return Err(err);
-                }
+                std::fs::create_dir_all(&parent)?
             }
             File::create(&dest)
         })
@@ -758,9 +756,7 @@ fn copy_file(src: &Path, dest: &Path) -> Result<()> {
         .or_else(|err| {
             if err.kind() == ErrorKind::NotFound {
                 let parent = dest.parent().expect("file should have a parent directory");
-                if let Err(err) = std::fs::create_dir_all(&parent) {
-                    return Err(err);
-                }
+                std::fs::create_dir_all(&parent)?
             }
             std::fs::copy(&src, &dest)
         })

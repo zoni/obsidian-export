@@ -6,7 +6,7 @@ lazy_static! {
         Regex::new(r"^(?P<file>[^#|]+)??(#(?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap();
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 /// ObsidianNoteReference represents the structure of a `[[note]]` or `![[embed]]` reference.
 pub struct ObsidianNoteReference<'a> {
     /// The file (note name or partial path) being referenced.
@@ -18,7 +18,7 @@ pub struct ObsidianNoteReference<'a> {
     pub label: Option<&'a str>,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 /// RefParserState enumerates all the possible parsing states [RefParser] may enter.
 pub enum RefParserState {
     NoState,

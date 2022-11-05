@@ -31,13 +31,14 @@ fn test_main_variants_with_default_options() {
             continue;
         };
         let filename = entry.file_name().to_string_lossy().into_owned();
-        let expected = read_to_string(entry.path()).expect(&format!(
-            "failed to read {} from testdata/expected/main-samples/",
-            entry.path().display()
-        ));
-        let actual = read_to_string(tmp_dir.path().clone().join(PathBuf::from(&filename))).expect(
-            &format!("failed to read {} from temporary exportdir", filename),
-        );
+        let expected = read_to_string(entry.path()).unwrap_or_else(|_| {
+            panic!(
+                "failed to read {} from testdata/expected/main-samples/",
+                entry.path().display()
+            )
+        });
+        let actual = read_to_string(tmp_dir.path().clone().join(PathBuf::from(&filename)))
+            .unwrap_or_else(|_| panic!("failed to read {} from temporary exportdir", filename));
 
         assert_eq!(
             expected, actual,
@@ -170,7 +171,7 @@ fn test_start_at_subdir() {
     let expected = if cfg!(windows) {
         read_to_string("tests/testdata/expected/start-at/subdir/Note B.md")
             .unwrap()
-            .replace("/", "\\")
+            .replace('/', "\\")
     } else {
         read_to_string("tests/testdata/expected/start-at/subdir/Note B.md").unwrap()
     };
@@ -196,7 +197,7 @@ fn test_start_at_file_within_subdir_destination_is_dir() {
     let expected = if cfg!(windows) {
         read_to_string("tests/testdata/expected/start-at/single-file/Note B.md")
             .unwrap()
-            .replace("/", "\\")
+            .replace('/', "\\")
     } else {
         read_to_string("tests/testdata/expected/start-at/single-file/Note B.md").unwrap()
     };
@@ -223,7 +224,7 @@ fn test_start_at_file_within_subdir_destination_is_file() {
     let expected = if cfg!(windows) {
         read_to_string("tests/testdata/expected/start-at/single-file/Note B.md")
             .unwrap()
-            .replace("/", "\\")
+            .replace('/', "\\")
     } else {
         read_to_string("tests/testdata/expected/start-at/single-file/Note B.md").unwrap()
     };
@@ -385,13 +386,14 @@ fn test_non_ascii_filenames() {
             continue;
         };
         let filename = entry.file_name().to_string_lossy().into_owned();
-        let expected = read_to_string(entry.path()).expect(&format!(
-            "failed to read {} from testdata/expected/non-ascii/",
-            entry.path().display()
-        ));
-        let actual = read_to_string(tmp_dir.path().clone().join(PathBuf::from(&filename))).expect(
-            &format!("failed to read {} from temporary exportdir", filename),
-        );
+        let expected = read_to_string(entry.path()).unwrap_or_else(|_| {
+            panic!(
+                "failed to read {} from testdata/expected/non-ascii/",
+                entry.path().display()
+            )
+        });
+        let actual = read_to_string(tmp_dir.path().clone().join(PathBuf::from(&filename)))
+            .unwrap_or_else(|_| panic!("failed to read {} from temporary exportdir", filename));
 
         assert_eq!(
             expected, actual,
@@ -414,7 +416,7 @@ fn test_same_filename_different_directories() {
     let expected = if cfg!(windows) {
         read_to_string("tests/testdata/expected/same-filename-different-directories/Note.md")
             .unwrap()
-            .replace("/", "\\")
+            .replace('/', "\\")
     } else {
         read_to_string("tests/testdata/expected/same-filename-different-directories/Note.md")
             .unwrap()
