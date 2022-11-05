@@ -40,6 +40,7 @@ pub fn frontmatter_to_str(frontmatter: Frontmatter) -> Result<String> {
     }
 
     let mut buffer = String::new();
+    buffer.push_str("---\n");
     buffer.push_str(&serde_yaml::to_string(&frontmatter)?);
     buffer.push_str("---\n");
     Ok(buffer)
