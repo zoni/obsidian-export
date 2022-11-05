@@ -438,7 +438,7 @@ impl<'a> Exporter<'a> {
                 file_tree: context.file_tree(),
             });
         }
-        let content = fs::read_to_string(&path).context(ReadSnafu { path })?;
+        let content = fs::read_to_string(path).context(ReadSnafu { path })?;
         let (frontmatter, content) =
             matter::matter(&content).unwrap_or(("".to_string(), content.to_string()));
         let frontmatter =
@@ -677,7 +677,7 @@ impl<'a> Exporter<'a> {
         // in case of embedded notes.
         let rel_link = diff_paths(
             target_file,
-            &context
+            context
                 .root_file()
                 .parent()
                 .expect("obsidian content files should always have a parent"),
@@ -718,7 +718,7 @@ fn lookup_filename_in_vault<'a>(
     // lookup.
     vault_contents.iter().find(|path| {
         let path_lowered = PathBuf::from(path.to_string_lossy().to_lowercase());
-        path.ends_with(&filename)
+        path.ends_with(filename)
             || path_lowered.ends_with(&filename.to_lowercase())
             || path.ends_with(format!("{}.md", &filename))
             || path_lowered.ends_with(format!("{}.md", &filename.to_lowercase()))
@@ -738,26 +738,26 @@ fn render_mdevents_to_mdtext(markdown: MarkdownEvents) -> String {
 }
 
 fn create_file(dest: &Path) -> Result<File> {
-    let file = File::create(&dest)
+    let file = File::create(dest)
         .or_else(|err| {
             if err.kind() == ErrorKind::NotFound {
                 let parent = dest.parent().expect("file should have a parent directory");
-                std::fs::create_dir_all(&parent)?
+                std::fs::create_dir_all(parent)?
             }
-            File::create(&dest)
+            File::create(dest)
         })
         .context(WriteSnafu { path: dest })?;
     Ok(file)
 }
 
 fn copy_file(src: &Path, dest: &Path) -> Result<()> {
-    std::fs::copy(&src, &dest)
+    std::fs::copy(src, dest)
         .or_else(|err| {
             if err.kind() == ErrorKind::NotFound {
                 let parent = dest.parent().expect("file should have a parent directory");
-                std::fs::create_dir_all(&parent)?
+                std::fs::create_dir_all(parent)?
             }
-            std::fs::copy(&src, &dest)
+            std::fs::copy(src, dest)
         })
         .context(WriteSnafu { path: dest })?;
     Ok(())
