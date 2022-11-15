@@ -217,7 +217,7 @@ And `layouts/_default/_markup/render-image.html` for images:
     {{- if strings.HasSuffix $url.Path ".md" -}}
       {{- relref .Page .Destination | safeURL -}}
     {{- else -}}
-      {{- printf "/%s%s" .Page.File.Dir .Destination | safeURL -}}
+      {{- path.Join "/" .Page.File.Dir .Destination | safeURL -}}
     {{- end -}}
   {{- else -}}
     {{- .Destination | safeURL -}}
