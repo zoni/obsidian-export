@@ -217,7 +217,7 @@ And `layouts/_default/_markup/render-image.html` for images:
     {{- if strings.HasSuffix $url.Path ".md" -}}
       {{- relref .Page .Destination | safeURL -}}
     {{- else -}}
-      {{- path.Join "/" .Page.File.Dir .Destination | safeURL -}}
+      {{- printf "/%s%s" .Page.File.Dir .Destination | safeURL -}}
     {{- end -}}
   {{- else -}}
     {{- .Destination | safeURL -}}
@@ -243,10 +243,83 @@ All of the functionality exposed by the `obsidian-export` CLI command is also ac
 To get started, visit the library documentation on [obsidian_export](https://docs.rs/obsidian-export/latest/obsidian_export/) and [obsidian_export::Exporter](https://docs.rs/obsidian-export/latest/obsidian_export/struct.Exporter.html).
 
 
-# Contributing
+# Contributing to Obsidian Export
 
-I will happily accept bug fixes as well as enhancements, as long as they align with the overall scope and vision of the project.
-Please see [CONTRIBUTING](CONTRIBUTING.md) for more information.
+Hi there!
+Thank you so much for wanting to contribute to this project.
+I greatly appreciate any efforts people like you put into making obsidian-export better!
+
+Managing an open-source project can take a lot of time and effort however.
+As this is a passion project which I maintain alongside my regular daytime job, I need to take some measures to safeguard my mental health and the enjoyment of this project.
+
+This document aims to provide guidance which makes contributions easier by:
+
+1. Defining the expectations I have of submissions to the codebase and the pull request process.
+1. Helping you get set up for development on the code.
+1. Providing pointers to some areas of the codebase, as well as some design considerations to take into account when making changes.
+
+## Working with Rust
+
+Obsidian-export is written in [Rust](https://www.rust-lang.org/), which is not the easiest of languages to master.
+If you'd like to contribute but you don't know Rust, check out [Learn Rust](https://www.rust-lang.org/learn) for some suggestions of how to get started with the language.
+In general, I will do my best to support you and help you out, but understand my time for mentoring is highly limited.
+
+To work on the codebase, you'll also need the Rust toolchain, including cargo, rustfmt and clippy.
+The easiest way is to [install Rust using rustup](https://www.rust-lang.org/tools/install), which lets you install rustfmt and clippy using `rustup component add rustfmt` and `rustup component add clippy` respectively.
+
+## Design principles
+
+My intention is to keep the core of `obsidian-export` as limited and small as possible, avoiding changes to the core [`Exporter`](https://docs.rs/obsidian-export/latest/obsidian_export/struct.Exporter.html) struct or any of its methods whenever possible.
+This improves long-term maintainability and makes investigation of bugs simpler.
+
+To keep the core of obsidian-export small while still supporting a wide range of use-cases, additional functionality should be pushed down into [postprocessors](https://docs.rs/obsidian-export/latest/obsidian_export/type.Postprocessor.html) as much as possible.
+You can see some examples of this in:
+
+* [Support Obsidian's "Strict line breaks" setting (#57)](https://github.com/zoni/obsidian-export/pull/57)
+* [Frontmatter based filtering (#67)](https://github.com/zoni/obsidian-export/pull/67)
+
+## Conventions
+
+Code is formatted with [rustfmt](https://github.com/rust-lang/rustfmt) using the default options.
+In addition, all default [clippy](https://github.com/rust-lang/rust-clippy) checks on the latest stable Rust compiler must also pass.
+Both of these are enforced through CI using GitHub actions.
+
+ > 
+ > **💡 Tip: install pre-commit hooks** 
+ > 
+ > This codebase is set up with the [pre-commit framework](https://pre-commit.com/) to automatically run the appropriate checks locally whenever you commit.
+ > Assuming you [have pre-commit installed](https://pre-commit.com/#install), all you need to do is run `pre-commit install` once to get this set up.
+
+Following my advice on [creating high-quality commits](https://nick.groenen.me/notes/high-quality-commits/) will make it easier for me to review changes.
+I don't insist on this, but pull requests which fail to adhere to these conventions are at risk of being squashed and having their commit messages rewritten when they are accepted.
+
+## Tests
+
+In order to have confidence that your changes work as intended, as well as to avoid regressions when making changes in the future, I would like to see code accompanied by test cases.
+
+At the moment, the test framework primary relies on high-level integration tests, all of which are defined in the [tests](tests/) directory.
+These rely on comparing Markdown notes [before](tests/testdata/input) and [after](tests/testdata/expected) running an export.
+By studying some of the existing tests, you should be able to copy and adapt these for your own changes.
+
+For an example of doing low-level unit tests, you can look at the end of [frontmatter.rs](src/frontmatter.rs).
+
+## Documentation
+
+I place a lot of value on good documentation and would encourage you to include updates to the docs with your changes.
+Changes or additions to public methods and attributes **must** come with proper documentation for a PR to be accepted.
+
+Advice on writing Rust documentation can be found in:
+
+* [The rustdoc book: How to write documentation](https://doc.rust-lang.org/rustdoc/how-to-write-documentation.html)
+* [Rust by example: Documentation](https://doc.rust-lang.org/rust-by-example/meta/doc.html)
+
+Updates to the user guide/README instructions are also preferred, but optional.
+If you don't feel comfortable writing user documentation, I will be happy to guide you or do it for you.
+
+ > 
+ > **⚠ Warning**
+ > 
+ > If you update the README file, take note that you must edit the fragments in the [docs](docs/) directory as opposed to the README in the root of the repository, which is auto-generated.
 
 
 # License
@@ -257,6 +330,181 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 
 # Changelog
+
+## v22.11.0 (2022-11-19)
+
+### New
+
+* Apply unicode normalization while resolving notes. \[Nick Groenen\]
+  
+  The unicode standard allows for certain (visually) identical characters to
+  be represented in different ways.
+  
+  For example the character ä may be represented as a single combined
+  codepoint "Latin Small Letter A with Diaeresis" (U+00E4) or by the
+  combination of "Latin Small Letter A" (U+0061) followed by "Combining
+  Diaeresis" (U+0308).
+  
+  When encoded with UTF-8, these are represented as respectively the two
+  bytes 0xC3 0xA4, and the three bytes 0x61 0xCC 0x88.
+  
+  A user linking to notes with these characters in their titles would
+  expect these two variants to link to the same file, given they are
+  visually identical and have the exact same semantic meaning.
+  
+  The unicode standard defines a method to deconstruct and normalize these
+  forms, so that a byte comparison on the normalized forms of these
+  variants ends up comparing the same thing. This is called Unicode
+  Normalization, defined in Unicode® Standard Annex #15
+  (http://www.unicode.org/reports/tr15/).
+  
+  The W3C Working Group has written an excellent explanation of the
+  problems regarding string matching, and how unicode normalization helps
+  with this process: https://www.w3.org/TR/charmod-norm/#unicodeNormalization
+  
+  With this change, obsidian-export will perform unicode normalization
+  (specifically the C (or NFC) normalization form) on all note titles
+  while looking up link references, ensuring visually identical links are
+  treated as being similar, even if they were encoded as different
+  variants.
+  
+  A special thanks to Hans Raaf (@oderwat) for reporting and helping track
+  down this issue.
+
+### Breaking Changes (affects library API only)
+
+* Pass context and events as mutable references to postprocessors. \[Nick Groenen\]
+  
+  Instead of passing clones of context and the markdown tree to
+  postprocessors, pass them a mutable reference which may be modified
+  in-place.
+  
+  This is a breaking change to the postprocessor implementation, changing
+  both the input arguments as well as the return value:
+  
+  ````diff
+  -    dyn Fn(Context, MarkdownEvents) -> (Context, MarkdownEvents, PostprocessorResult) + Send + Sync;
+  +    dyn Fn(&mut Context, &mut MarkdownEvents) -> PostprocessorResult + Send + Sync;
+  ````
+  
+  With this change the postprocessor API becomes a little more ergonomic
+  to use however, especially making the intent around return statements more clear.
+
+### Other
+
+* Use path.Join to construct hugo links (#92) \[Chang-Yen Tseng\]
+  
+  Use path.Join so that it will render correctly on Windows
+  (path.Join will convert Windows backslash to forward slash)
+
+* Bump crossbeam-utils from 0.8.5 to 0.8.12. \[dependabot\[bot\]\]
+  
+  Bumps [crossbeam-utils](https://github.com/crossbeam-rs/crossbeam) from 0.8.5 to 0.8.12.
+  
+  * [Release notes](https://github.com/crossbeam-rs/crossbeam/releases)
+  * [Changelog](https://github.com/crossbeam-rs/crossbeam/blob/master/CHANGELOG.md)
+  * [Commits](https://github.com/crossbeam-rs/crossbeam/compare/crossbeam-utils-0.8.5...crossbeam-utils-0.8.12)
+  ---
+  
+  updated-dependencies:
+  
+  * dependency-name: crossbeam-utils
+    dependency-type: indirect
+    ...
+* Bump regex from 1.6.0 to 1.7.0. \[dependabot\[bot\]\]
+  
+  Bumps [regex](https://github.com/rust-lang/regex) from 1.6.0 to 1.7.0.
+  
+  * [Release notes](https://github.com/rust-lang/regex/releases)
+  * [Changelog](https://github.com/rust-lang/regex/blob/master/CHANGELOG.md)
+  * [Commits](https://github.com/rust-lang/regex/compare/1.6.0...1.7.0)
+  ---
+  
+  updated-dependencies:
+  
+  * dependency-name: regex
+    dependency-type: direct:production
+    update-type: version-update:semver-minor
+    ...
+* Bump actions/checkout from 2 to 3. \[dependabot\[bot\]\]
+  
+  Bumps [actions/checkout](https://github.com/actions/checkout) from 2 to 3.
+  
+  * [Release notes](https://github.com/actions/checkout/releases)
+  * [Changelog](https://github.com/actions/checkout/blob/main/CHANGELOG.md)
+  * [Commits](https://github.com/actions/checkout/compare/v2...v3)
+  ---
+  
+  updated-dependencies:
+  
+  * dependency-name: actions/checkout
+    dependency-type: direct:production
+    update-type: version-update:semver-major
+    ...
+* Bump actions/upload-artifact from 2 to 3. \[dependabot\[bot\]\]
+  
+  Bumps [actions/upload-artifact](https://github.com/actions/upload-artifact) from 2 to 3.
+  
+  * [Release notes](https://github.com/actions/upload-artifact/releases)
+  * [Commits](https://github.com/actions/upload-artifact/compare/v2...v3)
+  ---
+  
+  updated-dependencies:
+  
+  * dependency-name: actions/upload-artifact
+    dependency-type: direct:production
+    update-type: version-update:semver-major
+    ...
+* Bump thread_local from 1.1.3 to 1.1.4. \[dependabot\[bot\]\]
+  
+  Bumps [thread_local](https://github.com/Amanieu/thread_local-rs) from 1.1.3 to 1.1.4.
+  
+  * [Release notes](https://github.com/Amanieu/thread_local-rs/releases)
+  * [Commits](https://github.com/Amanieu/thread_local-rs/compare/v1.1.3...1.1.4)
+  ---
+  
+  updated-dependencies:
+  
+  * dependency-name: thread_local
+    dependency-type: indirect
+    ...
+* Remove needless borrows. \[Nick Groenen\]
+
+* Upgrade snafu to 0.7.x. \[Nick Groenen\]
+
+* Upgrade pulldown-cmark-to-cmark to 10.0.x. \[Nick Groenen\]
+
+* Upgrade serde_yaml to 0.9.x. \[Nick Groenen\]
+
+* Upgrade minor dependencies. \[Nick Groenen\]
+
+* Fix new clippy lints. \[Nick Groenen\]
+
+* Add a contributor guide. \[Nick Groenen\]
+
+* Simplify pre-commit setup. \[Nick Groenen\]
+  
+  No need to depend on a third-party hook repository when each of these
+  checks is easily defined and run through system commands.
+  
+  This also allows us to actually run tests, which is current unsupported
+  (https://github.com/doublify/pre-commit-rust/pull/19)
+
+* Bump tempfile from 3.2.0 to 3.3.0. \[dependabot\[bot\]\]
+  
+  Bumps [tempfile](https://github.com/Stebalien/tempfile) from 3.2.0 to 3.3.0.
+  
+  * [Release notes](https://github.com/Stebalien/tempfile/releases)
+  * [Changelog](https://github.com/Stebalien/tempfile/blob/master/NEWS)
+  * [Commits](https://github.com/Stebalien/tempfile/compare/v3.2.0...v3.3.0)
+  ---
+  
+  updated-dependencies:
+  
+  * dependency-name: tempfile
+    dependency-type: direct:production
+    update-type: version-update:semver-minor
+    ...
 
 ## v22.1.0 (2022-01-02)
 
@@ -847,10 +1095,8 @@ notable new feature.
 [CommonMark]: https://commonmark.org/
 [gitignore]: https://git-scm.com/docs/gitignore
 [Cargo]: https://doc.rust-lang.org/cargo/
-[gitignore]: https://git-scm.com/docs/gitignore
-[gitignore]: https://git-scm.com/docs/gitignore
 [Hugo]: https://gohugo.io
-[ and  shortcodes]: https://gohugo.io/content-management/cross-references/
+[`ref` and `relref` shortcodes]: https://gohugo.io/content-management/cross-references/
 [Markdown Render Hooks]: https://gohugo.io/getting-started/configuration-markup#markdown-render-hooks
 [Apache 2.0]: https://github.com/zoni/obsidian-export/blob/master/LICENSE-APACHE
 [MIT]: https://github.com/zoni/obsidian-export/blob/master/LICENSE-MIT

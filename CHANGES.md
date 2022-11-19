@@ -1,5 +1,173 @@
 # Changelog
 
+## v22.11.0 (2022-11-19)
+
+### New
+
+* Apply unicode normalization while resolving notes. [Nick Groenen]
+
+  The unicode standard allows for certain (visually) identical characters to
+  be represented in different ways.
+
+  For example the character ä may be represented as a single combined
+  codepoint "Latin Small Letter A with Diaeresis" (U+00E4) or by the
+  combination of "Latin Small Letter A" (U+0061) followed by "Combining
+  Diaeresis" (U+0308).
+
+  When encoded with UTF-8, these are represented as respectively the two
+  bytes 0xC3 0xA4, and the three bytes 0x61 0xCC 0x88.
+
+  A user linking to notes with these characters in their titles would
+  expect these two variants to link to the same file, given they are
+  visually identical and have the exact same semantic meaning.
+
+  The unicode standard defines a method to deconstruct and normalize these
+  forms, so that a byte comparison on the normalized forms of these
+  variants ends up comparing the same thing. This is called Unicode
+  Normalization, defined in Unicode® Standard Annex #15
+  (http://www.unicode.org/reports/tr15/).
+
+  The W3C Working Group has written an excellent explanation of the
+  problems regarding string matching, and how unicode normalization helps
+  with this process: https://www.w3.org/TR/charmod-norm/#unicodeNormalization
+
+  With this change, obsidian-export will perform unicode normalization
+  (specifically the C (or NFC) normalization form) on all note titles
+  while looking up link references, ensuring visually identical links are
+  treated as being similar, even if they were encoded as different
+  variants.
+
+  A special thanks to Hans Raaf (@oderwat) for reporting and helping track
+  down this issue.
+
+### Breaking Changes (affects library API only)
+
+* Pass context and events as mutable references to postprocessors. [Nick Groenen]
+
+  Instead of passing clones of context and the markdown tree to
+  postprocessors, pass them a mutable reference which may be modified
+  in-place.
+
+  This is a breaking change to the postprocessor implementation, changing
+  both the input arguments as well as the return value:
+
+  ```diff
+  -    dyn Fn(Context, MarkdownEvents) -> (Context, MarkdownEvents, PostprocessorResult) + Send + Sync;
+  +    dyn Fn(&mut Context, &mut MarkdownEvents) -> PostprocessorResult + Send + Sync;
+  ```
+
+  With this change the postprocessor API becomes a little more ergonomic
+  to use however, especially making the intent around return statements more clear.
+
+### Other
+
+* Use path.Join to construct hugo links (#92) [Chang-Yen Tseng]
+
+  Use path.Join so that it will render correctly on Windows
+  (path.Join will convert Windows backslash to forward slash)
+
+* Bump crossbeam-utils from 0.8.5 to 0.8.12. [dependabot[bot]]
+
+  Bumps [crossbeam-utils](https://github.com/crossbeam-rs/crossbeam) from 0.8.5 to 0.8.12.
+  - [Release notes](https://github.com/crossbeam-rs/crossbeam/releases)
+  - [Changelog](https://github.com/crossbeam-rs/crossbeam/blob/master/CHANGELOG.md)
+  - [Commits](https://github.com/crossbeam-rs/crossbeam/compare/crossbeam-utils-0.8.5...crossbeam-utils-0.8.12)
+
+  ---
+  updated-dependencies:
+  - dependency-name: crossbeam-utils
+    dependency-type: indirect
+  ...
+
+* Bump regex from 1.6.0 to 1.7.0. [dependabot[bot]]
+
+  Bumps [regex](https://github.com/rust-lang/regex) from 1.6.0 to 1.7.0.
+  - [Release notes](https://github.com/rust-lang/regex/releases)
+  - [Changelog](https://github.com/rust-lang/regex/blob/master/CHANGELOG.md)
+  - [Commits](https://github.com/rust-lang/regex/compare/1.6.0...1.7.0)
+
+  ---
+  updated-dependencies:
+  - dependency-name: regex
+    dependency-type: direct:production
+    update-type: version-update:semver-minor
+  ...
+
+* Bump actions/checkout from 2 to 3. [dependabot[bot]]
+
+  Bumps [actions/checkout](https://github.com/actions/checkout) from 2 to 3.
+  - [Release notes](https://github.com/actions/checkout/releases)
+  - [Changelog](https://github.com/actions/checkout/blob/main/CHANGELOG.md)
+  - [Commits](https://github.com/actions/checkout/compare/v2...v3)
+
+  ---
+  updated-dependencies:
+  - dependency-name: actions/checkout
+    dependency-type: direct:production
+    update-type: version-update:semver-major
+  ...
+
+* Bump actions/upload-artifact from 2 to 3. [dependabot[bot]]
+
+  Bumps [actions/upload-artifact](https://github.com/actions/upload-artifact) from 2 to 3.
+  - [Release notes](https://github.com/actions/upload-artifact/releases)
+  - [Commits](https://github.com/actions/upload-artifact/compare/v2...v3)
+
+  ---
+  updated-dependencies:
+  - dependency-name: actions/upload-artifact
+    dependency-type: direct:production
+    update-type: version-update:semver-major
+  ...
+
+* Bump thread_local from 1.1.3 to 1.1.4. [dependabot[bot]]
+
+  Bumps [thread_local](https://github.com/Amanieu/thread_local-rs) from 1.1.3 to 1.1.4.
+  - [Release notes](https://github.com/Amanieu/thread_local-rs/releases)
+  - [Commits](https://github.com/Amanieu/thread_local-rs/compare/v1.1.3...1.1.4)
+
+  ---
+  updated-dependencies:
+  - dependency-name: thread_local
+    dependency-type: indirect
+  ...
+
+* Remove needless borrows. [Nick Groenen]
+
+* Upgrade snafu to 0.7.x. [Nick Groenen]
+
+* Upgrade pulldown-cmark-to-cmark to 10.0.x. [Nick Groenen]
+
+* Upgrade serde_yaml to 0.9.x. [Nick Groenen]
+
+* Upgrade minor dependencies. [Nick Groenen]
+
+* Fix new clippy lints. [Nick Groenen]
+
+* Add a contributor guide. [Nick Groenen]
+
+* Simplify pre-commit setup. [Nick Groenen]
+
+  No need to depend on a third-party hook repository when each of these
+  checks is easily defined and run through system commands.
+
+  This also allows us to actually run tests, which is current unsupported
+  (https://github.com/doublify/pre-commit-rust/pull/19)
+
+* Bump tempfile from 3.2.0 to 3.3.0. [dependabot[bot]]
+
+  Bumps [tempfile](https://github.com/Stebalien/tempfile) from 3.2.0 to 3.3.0.
+  - [Release notes](https://github.com/Stebalien/tempfile/releases)
+  - [Changelog](https://github.com/Stebalien/tempfile/blob/master/NEWS)
+  - [Commits](https://github.com/Stebalien/tempfile/compare/v3.2.0...v3.3.0)
+
+  ---
+  updated-dependencies:
+  - dependency-name: tempfile
+    dependency-type: direct:production
+    update-type: version-update:semver-minor
+  ...
+
 ## v22.1.0 (2022-01-02)
 
 Happy new year! On this second day of 2022 comes a fresh release with one
