@@ -30,6 +30,7 @@ use std::io::prelude::*;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::str;
+use unicode_normalization::UnicodeNormalization;
 
 /// A series of markdown [Event]s that are generated while traversing an Obsidian markdown note.
 pub type MarkdownEvents<'a> = Vec<Event<'a>>;
@@ -706,22 +707,33 @@ impl<'a> Exporter<'a> {
     }
 }
 
+/// Get the full path for the given filename when it's contained in vault_contents, taking into
+/// account:
+///
+/// 1. Standard Obsidian note references not including a .md extension.
+/// 2. Case-insensitive matching
+/// 3. Unicode normalization rules using normalization form C
+///    (https://www.w3.org/TR/charmod-norm/#unicodeNormalization)
 fn lookup_filename_in_vault<'a>(
     filename: &str,
     vault_contents: &'a [PathBuf],
 ) -> Option<&'a PathBuf> {
-    // Markdown files don't have their .md extension added by Obsidian, but other files (images,
-    // PDFs, etc) do so we match on both possibilities.
-    //
-    // References can also refer to notes in a different case (to lowercase text in a
-    // sentence even if the note is capitalized for example) so we also try a case-insensitive
-    // lookup.
+    let filename = PathBuf::from(filename);
+    let filename_normalized = filename.to_string_lossy().nfc().collect::<String>();
+
     vault_contents.iter().find(|path| {
-        let path_lowered = PathBuf::from(path.to_string_lossy().to_lowercase());
-        path.ends_with(filename)
-            || path_lowered.ends_with(&filename.to_lowercase())
-            || path.ends_with(format!("{}.md", &filename))
-            || path_lowered.ends_with(format!("{}.md", &filename.to_lowercase()))
+        let path_normalized_str = path.to_string_lossy().nfc().collect::<String>();
+        let path_normalized = PathBuf::from(&path_normalized_str);
+        let path_normalized_lowered = PathBuf::from(&path_normalized_str.to_lowercase());
+
+        // It would be convenient if we could just do `filename.set_extension("md")` at the start
+        // of this funtion so we don't need multiple separate + ".md" match cases here, however
+        // that would break with a reference of `[[Note.1]]` linking to `[[Note.1.md]]`.
+
+        path_normalized.ends_with(&filename_normalized)
+            || path_normalized.ends_with(filename_normalized.clone() + ".md")
+            || path_normalized_lowered.ends_with(&filename_normalized.to_lowercase())
+            || path_normalized_lowered.ends_with(filename_normalized.to_lowercase() + ".md")
     })
 }
 
@@ -874,5 +886,79 @@ fn codeblock_kind_to_owned<'a>(codeblock_kind: CodeBlockKind) -> CodeBlockKind<'
     match codeblock_kind {
         CodeBlockKind::Indented => CodeBlockKind::Indented,
         CodeBlockKind::Fenced(cowstr) => CodeBlockKind::Fenced(CowStr::from(cowstr.into_string())),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+    use rstest::rstest;
+
+    lazy_static! {
+        static ref VAULT: Vec<std::path::PathBuf> = vec![
+            PathBuf::from("NoteA.md"),
+            PathBuf::from("Document.pdf"),
+            PathBuf::from("Note.1.md"),
+            PathBuf::from("nested/NoteA.md"),
+            PathBuf::from("Note\u{E4}.md"), // Noteä.md, see also encodings() below
+        ];
+    }
+
+    #[test]
+    fn encodings() {
+        // Standard "Latin Small Letter A with Diaeresis" (U+00E4)
+        // Encoded in UTF-8 as two bytes: 0xC3 0xA4
+        assert_eq!(String::from_utf8(vec![0xC3, 0xA4]).unwrap(), "ä");
+        assert_eq!("\u{E4}", "ä");
+
+        // Basic (ASCII) lowercase a followed by Unicode Character “◌̈” (U+0308)
+        // Renders the same visual appearance but is encoded in UTF-8 as three bytes:
+        // 0x61 0xCC 0x88
+        assert_eq!(String::from_utf8(vec![0x61, 0xCC, 0x88]).unwrap(), "ä");
+        assert_eq!("a\u{308}", "ä");
+        assert_eq!("\u{61}\u{308}", "ä");
+
+        // For more examples and a better explanation of this concept, see
+        // https://www.w3.org/TR/charmod-norm/#aringExample
+    }
+
+    #[rstest]
+    // Exact match
+    #[case("NoteA.md", "NoteA.md")]
+    #[case("NoteA", "NoteA.md")]
+    // Same note in subdir, exact match should find it
+    #[case("nested/NoteA.md", "nested/NoteA.md")]
+    #[case("nested/NoteA", "nested/NoteA.md")]
+    // Different extensions
+    #[case("Document.pdf", "Document.pdf")]
+    #[case("Note.1", "Note.1.md")]
+    #[case("Note.1.md", "Note.1.md")]
+    // Case-insensitive matches
+    #[case("notea.md", "NoteA.md")]
+    #[case("notea", "NoteA.md")]
+    #[case("NESTED/notea.md", "nested/NoteA.md")]
+    #[case("NESTED/notea", "nested/NoteA.md")]
+    // "Latin Small Letter A with Diaeresis" (U+00E4)
+    #[case("Note\u{E4}.md", "Note\u{E4}.md")]
+    #[case("Note\u{E4}", "Note\u{E4}.md")]
+    // Basic (ASCII) lowercase a followed by Unicode Character “◌̈” (U+0308)
+    // The UTF-8 encoding is different but it renders the same visual appearance as the case above,
+    // so we expect it to find the same file.
+    #[case("Note\u{61}\u{308}.md", "Note\u{E4}.md")]
+    #[case("Note\u{61}\u{308}", "Note\u{E4}.md")]
+    // We should expect this to work with lowercasing as well, so NoteÄ should find Noteä
+    // NoteÄ where Ä = Single Ä (U+00C4)
+    #[case("Note\u{C4}.md", "Note\u{E4}.md")]
+    #[case("Note\u{C4}", "Note\u{E4}.md")]
+    // NoteÄ where Ä = decomposed to A (U+0041) + ◌̈ (U+0308)
+    #[case("Note\u{41}\u{308}.md", "Note\u{E4}.md")]
+    #[case("Note\u{41}\u{308}", "Note\u{E4}.md")]
+    fn test_lookup_filename_in_vault(#[case] input: &str, #[case] expected: &str) {
+        let result = lookup_filename_in_vault(input, &VAULT);
+        println!("Test input: {:?}", input);
+        println!("Expecting: {:?}", expected);
+        println!("Got: {:?}", result.unwrap_or(&PathBuf::from("")));
+        assert_eq!(result, Some(&PathBuf::from(expected)))
     }
 }
