@@ -216,6 +216,15 @@ pub enum PostprocessorResult {
     StopAndSkipNote,
 }
 
+#[derive(Debug, Clone, Copy)]
+/// Way to encode links
+pub enum LinkStrategy {
+    /// URL encode links
+    UrlEncoded,
+    /// Don't do anything to links
+    NoEncode,
+}
+
 #[derive(Clone)]
 /// Exporter provides the main interface to this library.
 ///
@@ -228,6 +237,7 @@ pub struct Exporter<'a> {
     destination: PathBuf,
     start_at: PathBuf,
     frontmatter_strategy: FrontmatterStrategy,
+    link_strategy: LinkStrategy,
     vault_contents: Option<Vec<PathBuf>>,
     walk_options: WalkOptions<'a>,
     process_embeds_recursively: bool,
@@ -241,6 +251,7 @@ impl<'a> fmt::Debug for Exporter<'a> {
             .field("root", &self.root)
             .field("destination", &self.destination)
             .field("frontmatter_strategy", &self.frontmatter_strategy)
+            .field("link_strategy", &self.link_strategy)
             .field("vault_contents", &self.vault_contents)
             .field("walk_options", &self.walk_options)
             .field(
@@ -271,6 +282,7 @@ impl<'a> Exporter<'a> {
             root,
             destination,
             frontmatter_strategy: FrontmatterStrategy::Auto,
+            link_strategy: LinkStrategy::UrlEncoded,
             walk_options: WalkOptions::default(),
             process_embeds_recursively: true,
             vault_contents: None,
@@ -297,6 +309,12 @@ impl<'a> Exporter<'a> {
     /// Set the [`FrontmatterStrategy`] to be used for this exporter.
     pub fn frontmatter_strategy(&mut self, strategy: FrontmatterStrategy) -> &mut Exporter<'a> {
         self.frontmatter_strategy = strategy;
+        self
+    }
+
+    /// Set the [`LinkStrategy`] to be used for this exporter.
+    pub fn link_strategy(&mut self, strategy: LinkStrategy) -> &mut Exporter<'a> {
+        self.link_strategy = strategy;
         self
     }
 
@@ -381,7 +399,7 @@ impl<'a> Exporter<'a> {
                     .strip_prefix(&self.start_at.clone())
                     .expect("file should always be nested under root")
                     .to_path_buf();
-                let destination = &self.destination.join(&relative_path);
+                let destination = &self.destination.join(relative_path);
                 self.export_note(&file, destination)
             })?;
         Ok(())
@@ -686,7 +704,12 @@ impl<'a> Exporter<'a> {
         .expect("should be able to build relative path when target file is found in vault");
 
         let rel_link = rel_link.to_string_lossy();
-        let mut link = utf8_percent_encode(&rel_link, PERCENTENCODE_CHARS).to_string();
+        let mut link = match self.link_strategy {
+            LinkStrategy::UrlEncoded => {
+                utf8_percent_encode(&rel_link, PERCENTENCODE_CHARS).to_string()
+            }
+            LinkStrategy::NoEncode => rel_link.to_string(), // pulldown_cmark automatically puts it into brackets
+        };
 
         if let Some(section) = reference.section {
             link.push('#');
@@ -732,7 +755,7 @@ fn lookup_filename_in_vault<'a>(
 
         path_normalized.ends_with(&filename_normalized)
             || path_normalized.ends_with(filename_normalized.clone() + ".md")
-            || path_normalized_lowered.ends_with(&filename_normalized.to_lowercase())
+            || path_normalized_lowered.ends_with(filename_normalized.to_lowercase())
             || path_normalized_lowered.ends_with(filename_normalized.to_lowercase() + ".md")
     })
 }
