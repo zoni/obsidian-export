@@ -719,7 +719,7 @@ fn lookup_filename_in_vault<'a>(
     vault_contents: &'a [PathBuf],
 ) -> Option<&'a PathBuf> {
     let filename = PathBuf::from(filename);
-    let filename_normalized = filename.to_string_lossy().nfc().collect::<String>();
+    let filename_normalized = filename.to_string_lossy().nfc().collect::<String>().trim().to_string();
 
     vault_contents.iter().find(|path| {
         let path_normalized_str = path.to_string_lossy().nfc().collect::<String>();
