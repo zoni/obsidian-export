@@ -5,6 +5,7 @@ pub extern crate serde_yaml;
 extern crate lazy_static;
 
 mod context;
+mod preprocessors;
 mod frontmatter;
 pub mod postprocessors;
 mod references;
@@ -132,7 +133,8 @@ pub type MarkdownEvents<'a> = Vec<Event<'a>>;
 /// exporter.add_postprocessor(&foo_to_bar);
 /// # exporter.run().unwrap();
 /// ```
-
+pub type Preprocessor =
+    dyn Fn(&mut Context, &mut String) -> PostprocessorResult + Send + Sync;
 pub type Postprocessor =
     dyn Fn(&mut Context, &mut MarkdownEvents) -> PostprocessorResult + Send + Sync;
 type Result<T, E = ExportError> = std::result::Result<T, E>;
@@ -231,6 +233,7 @@ pub struct Exporter<'a> {
     vault_contents: Option<Vec<PathBuf>>,
     walk_options: WalkOptions<'a>,
     process_embeds_recursively: bool,
+    preprocessors: Vec<&'a Preprocessor>,
     postprocessors: Vec<&'a Postprocessor>,
     embed_postprocessors: Vec<&'a Postprocessor>,
 }
@@ -274,6 +277,7 @@ impl<'a> Exporter<'a> {
             walk_options: WalkOptions::default(),
             process_embeds_recursively: true,
             vault_contents: None,
+            preprocessors: vec![&preprocessors::remove_ignore_blocks],
             postprocessors: vec![],
             embed_postprocessors: vec![],
         }
@@ -381,7 +385,7 @@ impl<'a> Exporter<'a> {
                     .strip_prefix(&self.start_at.clone())
                     .expect("file should always be nested under root")
                     .to_path_buf();
-                let destination = &self.destination.join(&relative_path);
+                let destination = &self.destination.join(relative_path);
                 self.export_note(&file, destination)
             })?;
         Ok(())
@@ -398,7 +402,7 @@ impl<'a> Exporter<'a> {
     fn parse_and_export_obsidian_note(&self, src: &Path, dest: &Path) -> Result<()> {
         let mut context = Context::new(src.to_path_buf(), dest.to_path_buf());
 
-        let (frontmatter, mut markdown_events) = self.parse_obsidian_note(src, &context)?;
+        let (frontmatter, mut markdown_events) = self.parse_obsidian_note(src, &mut context)?;
         context.frontmatter = frontmatter;
         for func in &self.postprocessors {
             match func(&mut context, &mut markdown_events) {
@@ -432,14 +436,17 @@ impl<'a> Exporter<'a> {
     fn parse_obsidian_note<'b>(
         &self,
         path: &Path,
-        context: &Context,
+        context: &mut Context,
     ) -> Result<(Frontmatter, MarkdownEvents<'b>)> {
         if context.note_depth() > NOTE_RECURSION_LIMIT {
             return Err(ExportError::RecursionLimitExceeded {
                 file_tree: context.file_tree(),
             });
         }
-        let content = fs::read_to_string(path).context(ReadSnafu { path })?;
+        let mut content = fs::read_to_string(path).context(ReadSnafu { path })?;
+        for preprocessor in &self.preprocessors {
+            preprocessor(context, &mut content);
+        }
         let (frontmatter, content) =
             matter::matter(&content).unwrap_or(("".to_string(), content.to_string()));
         let frontmatter =
@@ -598,7 +605,7 @@ impl<'a> Exporter<'a> {
 
         let events = match path.extension().unwrap_or(&no_ext).to_str() {
             Some("md") => {
-                let (frontmatter, mut events) = self.parse_obsidian_note(path, &child_context)?;
+                let (frontmatter, mut events) = self.parse_obsidian_note(path, &mut child_context)?;
                 child_context.frontmatter = frontmatter;
                 if let Some(section) = note_ref.section {
                     events = reduce_to_section(events, section);
@@ -647,9 +654,9 @@ impl<'a> Exporter<'a> {
         Ok(events)
     }
 
-    fn make_link_to_file<'b, 'c>(
+    fn make_link_to_file<'c>(
         &self,
-        reference: ObsidianNoteReference<'b>,
+        reference: ObsidianNoteReference<'_>,
         context: &Context,
     ) -> MarkdownEvents<'c> {
         let target_file = reference
@@ -732,7 +739,7 @@ fn lookup_filename_in_vault<'a>(
 
         path_normalized.ends_with(&filename_normalized)
             || path_normalized.ends_with(filename_normalized.clone() + ".md")
-            || path_normalized_lowered.ends_with(&filename_normalized.to_lowercase())
+            || path_normalized_lowered.ends_with(filename_normalized.to_lowercase())
             || path_normalized_lowered.ends_with(filename_normalized.to_lowercase() + ".md")
     })
 }
@@ -783,7 +790,7 @@ fn is_markdown_file(file: &Path) -> bool {
 
 /// Reduce a given `MarkdownEvents` to just those elements which are children of the given section
 /// (heading name).
-fn reduce_to_section<'a, 'b>(events: MarkdownEvents<'a>, section: &'b str) -> MarkdownEvents<'a> {
+fn reduce_to_section<'a>(events: MarkdownEvents<'a>, section: &'_ str) -> MarkdownEvents<'a> {
     let mut filtered_events = Vec::with_capacity(events.len());
     let mut target_section_encountered = false;
     let mut currently_in_target_section = false;
