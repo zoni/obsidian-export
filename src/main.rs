@@ -39,6 +39,13 @@ struct Opts {
     )]
     ignore_file: String,
 
+    #[options(
+        no_short,
+        help = "Exclude files with this keyword in the frontmatter from export",
+        default = "private"
+    )]
+    ignore_frontmatter_keyword: String,
+
     #[options(no_short, help = "Export hidden files", default = "false")]
     hidden: bool,
 

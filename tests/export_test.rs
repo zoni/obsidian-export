@@ -425,3 +425,78 @@ fn test_same_filename_different_directories() {
     let actual = read_to_string(tmp_dir.path().clone().join(PathBuf::from("Note.md"))).unwrap();
     assert_eq!(expected, actual);
 }
+
+#[test]
+fn test_ignore_frontmatter_default_keyword() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+    let mut exporter = Exporter::new(
+        PathBuf::from("tests/testdata/input/ignore-keyword/"),
+        tmp_dir.path().to_path_buf(),
+    );
+    exporter.run().expect("exporter returned error");
+
+    let walker = WalkDir::new("tests/testdata/expected/ignore-default-keyword/")
+        // Without sorting here, different test runs may trigger the first assertion failure in
+        // unpredictable order.
+        .sort_by(|a, b| a.file_name().cmp(b.file_name()))
+        .into_iter();
+    for entry in walker {
+        let entry = entry.unwrap();
+        if entry.metadata().unwrap().is_dir() {
+            continue;
+        };
+        let filename = entry.file_name().to_string_lossy().into_owned();
+        let expected = read_to_string(entry.path()).unwrap_or_else(|_| {
+            panic!(
+                "failed to read {} from testdata/expected/ignore-default-keyword/",
+                entry.path().display()
+            )
+        });
+        let actual = read_to_string(tmp_dir.path().clone().join(PathBuf::from(&filename)))
+            .unwrap_or_else(|_| panic!("failed to read {} from temporary exportdir", filename));
+
+        assert_eq!(
+            expected, actual,
+            "{} does not have expected content",
+            filename
+        );
+    }
+}
+
+#[test]
+fn test_ignore_frontmatter_specific_keyword() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+    let mut exporter = Exporter::new(
+        PathBuf::from("tests/testdata/input/ignore-keyword/"),
+        tmp_dir.path().to_path_buf(),
+    );
+    exporter.ignore_frontmatter_keyword("no-expört");
+    exporter.run().expect("exporter returned error");
+
+    let walker = WalkDir::new("tests/testdata/expected/ignore-specific-keyword/")
+        // Without sorting here, different test runs may trigger the first assertion failure in
+        // unpredictable order.
+        .sort_by(|a, b| a.file_name().cmp(b.file_name()))
+        .into_iter();
+    for entry in walker {
+        let entry = entry.unwrap();
+        if entry.metadata().unwrap().is_dir() {
+            continue;
+        };
+        let filename = entry.file_name().to_string_lossy().into_owned();
+        let expected = read_to_string(entry.path()).unwrap_or_else(|_| {
+            panic!(
+                "failed to read {} from testdata/expected/ignore-specific-keyword/",
+                entry.path().display()
+            )
+        });
+        let actual = read_to_string(tmp_dir.path().clone().join(PathBuf::from(&filename)))
+            .unwrap_or_else(|_| panic!("failed to read {} from temporary exportdir", filename));
+
+        assert_eq!(
+            expected, actual,
+            "{} does not have expected content",
+            filename
+        );
+    }
+}
