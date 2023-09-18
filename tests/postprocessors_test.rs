@@ -3,8 +3,10 @@ use obsidian_export::{Context, Exporter, MarkdownEvents, PostprocessorResult};
 use pretty_assertions::assert_eq;
 use pulldown_cmark::{CowStr, Event};
 use serde_yaml::Value;
+use std::collections::HashSet;
 use std::fs::{read_to_string, remove_file};
 use std::path::PathBuf;
+use std::sync::Mutex;
 use tempfile::TempDir;
 
 /// This postprocessor replaces any instance of "foo" with "bar" in the note body.
@@ -103,6 +105,38 @@ fn test_postprocessor_change_destination() {
     let new_note_path = tmp_dir.path().clone().join(PathBuf::from("MovedNote.md"));
     assert!(!original_note_path.exists());
     assert!(new_note_path.exists());
+}
+
+// Ensure postprocessor type definition has proper lifetimes to allow state (here: `parents`)
+// to be passed in. Otherwise, this fails with an error like:
+//     error[E0597]: `parents` does not live long enough
+//     cast requires that `parents` is borrowed for `'static`
+#[test]
+fn test_postprocessor_stateful_callback() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+    let mut exporter = Exporter::new(
+        PathBuf::from("tests/testdata/input/postprocessors"),
+        tmp_dir.path().to_path_buf(),
+    );
+
+    let parents: Mutex<HashSet<PathBuf>> = Default::default();
+    let callback = |ctx: &mut Context, _mdevents: &mut MarkdownEvents| -> PostprocessorResult {
+        parents
+            .lock()
+            .unwrap()
+            .insert(ctx.destination.parent().unwrap().to_path_buf());
+        PostprocessorResult::Continue
+    };
+    exporter.add_postprocessor(&callback);
+
+    exporter.run().unwrap();
+
+    let expected = tmp_dir.path().clone();
+
+    let parents = parents.lock().unwrap();
+    println!("{:?}", parents);
+    assert_eq!(1, parents.len());
+    assert!(parents.contains(expected));
 }
 
 // The purpose of this test to verify the `append_frontmatter` postprocessor is called to extend
