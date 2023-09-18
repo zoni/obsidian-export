@@ -1,5 +1,7 @@
 use obsidian_export::postprocessors::softbreaks_to_hardbreaks;
-use obsidian_export::{Context, Exporter, MarkdownEvents, PostprocessorResult};
+use obsidian_export::{
+    Context, EmbedPostprocess, Exporter, MarkdownEvents, Postprocess, PostprocessorResult,
+};
 use pretty_assertions::assert_eq;
 use pulldown_cmark::{CowStr, Event};
 use serde_yaml::Value;
@@ -137,6 +139,62 @@ fn test_postprocessor_stateful_callback() {
     println!("{:?}", parents);
     assert_eq!(1, parents.len());
     assert!(parents.contains(expected));
+}
+
+#[test]
+fn test_postprocessor_impl() {
+    #[derive(Default)]
+    struct Impl {
+        parents: Mutex<HashSet<PathBuf>>,
+        embeds: Mutex<u32>,
+    }
+    impl Postprocess for Impl {
+        fn postprocess(
+            &self,
+            ctx: &mut Context,
+            _events: &mut MarkdownEvents,
+        ) -> PostprocessorResult {
+            self.parents
+                .lock()
+                .unwrap()
+                .insert(ctx.destination.parent().unwrap().to_path_buf());
+            PostprocessorResult::Continue
+        }
+    }
+    impl EmbedPostprocess for Impl {
+        fn embed_postprocess(
+            &self,
+            _ctx: &mut Context,
+            _events: &mut MarkdownEvents,
+        ) -> PostprocessorResult {
+            let mut embeds = self.embeds.lock().unwrap();
+            *embeds += 1;
+            PostprocessorResult::Continue
+        }
+    }
+
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+    let mut exporter = Exporter::new(
+        PathBuf::from("tests/testdata/input/postprocessors"),
+        tmp_dir.path().to_path_buf(),
+    );
+
+    let postprocessor = Impl {
+        ..Default::default()
+    };
+    exporter.add_postprocessor_impl(&postprocessor);
+    exporter.add_embed_postprocessor_impl(&postprocessor);
+
+    exporter.run().unwrap();
+
+    let expected = tmp_dir.path().clone();
+
+    let parents = postprocessor.parents.lock().unwrap();
+    println!("{:?}", parents);
+    assert_eq!(1, parents.len());
+    assert!(parents.contains(expected));
+
+    assert_eq!(1, *postprocessor.embeds.lock().unwrap());
 }
 
 // The purpose of this test to verify the `append_frontmatter` postprocessor is called to extend
