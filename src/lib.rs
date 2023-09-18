@@ -133,8 +133,8 @@ pub type MarkdownEvents<'a> = Vec<Event<'a>>;
 /// # exporter.run().unwrap();
 /// ```
 
-pub type Postprocessor =
-    dyn Fn(&mut Context, &mut MarkdownEvents) -> PostprocessorResult + Send + Sync;
+pub type Postprocessor<'f> =
+    dyn Fn(&mut Context, &mut MarkdownEvents) -> PostprocessorResult + Send + Sync + 'f;
 type Result<T, E = ExportError> = std::result::Result<T, E>;
 
 const PERCENTENCODE_CHARS: &AsciiSet = &CONTROLS.add(b' ').add(b'(').add(b')').add(b'%').add(b'?');
@@ -231,8 +231,8 @@ pub struct Exporter<'a> {
     vault_contents: Option<Vec<PathBuf>>,
     walk_options: WalkOptions<'a>,
     process_embeds_recursively: bool,
-    postprocessors: Vec<&'a Postprocessor>,
-    embed_postprocessors: Vec<&'a Postprocessor>,
+    postprocessors: Vec<&'a Postprocessor<'a>>,
+    embed_postprocessors: Vec<&'a Postprocessor<'a>>,
 }
 
 impl<'a> fmt::Debug for Exporter<'a> {
