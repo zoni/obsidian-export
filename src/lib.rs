@@ -381,7 +381,7 @@ impl<'a> Exporter<'a> {
                     .strip_prefix(&self.start_at.clone())
                     .expect("file should always be nested under root")
                     .to_path_buf();
-                let destination = &self.destination.join(&relative_path);
+                let destination = &self.destination.join(relative_path);
                 self.export_note(&file, destination)
             })?;
         Ok(())
@@ -647,9 +647,9 @@ impl<'a> Exporter<'a> {
         Ok(events)
     }
 
-    fn make_link_to_file<'b, 'c>(
+    fn make_link_to_file<'c>(
         &self,
-        reference: ObsidianNoteReference<'b>,
+        reference: ObsidianNoteReference<'_>,
         context: &Context,
     ) -> MarkdownEvents<'c> {
         let target_file = reference
@@ -732,7 +732,7 @@ fn lookup_filename_in_vault<'a>(
 
         path_normalized.ends_with(&filename_normalized)
             || path_normalized.ends_with(filename_normalized.clone() + ".md")
-            || path_normalized_lowered.ends_with(&filename_normalized.to_lowercase())
+            || path_normalized_lowered.ends_with(filename_normalized.to_lowercase())
             || path_normalized_lowered.ends_with(filename_normalized.to_lowercase() + ".md")
     })
 }
@@ -783,7 +783,7 @@ fn is_markdown_file(file: &Path) -> bool {
 
 /// Reduce a given `MarkdownEvents` to just those elements which are children of the given section
 /// (heading name).
-fn reduce_to_section<'a, 'b>(events: MarkdownEvents<'a>, section: &'b str) -> MarkdownEvents<'a> {
+fn reduce_to_section<'a>(events: MarkdownEvents<'a>, section: &str) -> MarkdownEvents<'a> {
     let mut filtered_events = Vec::with_capacity(events.len());
     let mut target_section_encountered = false;
     let mut currently_in_target_section = false;
