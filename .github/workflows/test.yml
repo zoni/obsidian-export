@@ -1,74 +1,136 @@
+name: CI tests
 on: [push, pull_request]
 
-name: CI tests
+env:
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
 
 jobs:
-  linting:
-    name: Run lints
+  build:
+    name: Build project
     runs-on: ubuntu-latest
+    outputs:
+      rustc_cache_key: ${{ steps.setup_rust.outputs.cachekey }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
+        id: setup_rust
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
+          components: "rustfmt, clippy"
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: "cargo-base-${{ steps.setup_rust.outputs.cachekey }}-${{ hashFiles('**/Cargo.lock') }}"
+          restore-keys: |
+            cargo-base-${{ env.RUSTC_CACHEKEY }}
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+      - run: cargo build --locked --all-targets
 
-      - run: rustup component add rustfmt
-      - uses: actions-rs/cargo@v1
+  lint:
+    name: Run lints
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v3
         with:
-          command: fmt
-          args: --all -- --check
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: "cargo-lint-${{ needs.build.outputs.rustc_cache_key }}-${{ hashFiles('**/Cargo.lock') }}"
+          restore-keys: |
+            cargo-lint-${{ env.RUSTC_CACHEKEY }}
+            cargo-base-${{ env.RUSTC_CACHEKEY }}
+          fail-on-cache-miss: true
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
-
-      - run: rustup component add clippy
-      - uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
+      - run: cargo fmt --all -- --check
+      - run: cargo check
+      - run: cargo clippy -- -D warnings
 
   test-linux:
     name: Test on Linux
     runs-on: ubuntu-latest
+    needs: build
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/cache@v3
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: "cargo-test-${{ needs.build.outputs.rustc_cache_key }}-${{ hashFiles('**/Cargo.lock') }}"
+          restore-keys: |
+            cargo-test-${{ env.RUSTC_CACHEKEY }}
+            cargo-base-${{ env.RUSTC_CACHEKEY }}
+          fail-on-cache-miss: true
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - run: cargo test
 
   test-windows:
     name: Test on Windows
     runs-on: windows-latest
+    needs: build
     steps:
       - run: git config --system core.autocrlf false && git config --system core.eol lf
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
+        id: setup_rust
+      - uses: actions/cache@v3
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: "cargo-windows-${{ needs.build.outputs.rustc_cache_key }}-${{ hashFiles('**/Cargo.lock') }}"
+          restore-keys: |
+            cargo-windows-${{ env.RUSTC_CACHEKEY }}
+            cargo-base-${{ env.RUSTC_CACHEKEY }}
+          fail-on-cache-miss: true
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - run: cargo test
 
   coverage:
     name: Code coverage
     runs-on: ubuntu-latest
+    needs: build
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/cache@v3
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: "cargo-coverage-${{ needs.build.outputs.rustc_cache_key }}-${{ hashFiles('**/Cargo.lock') }}"
+          restore-keys: |
+            cargo-coverage-${{ env.RUSTC_CACHEKEY }}
+            cargo-base-${{ env.RUSTC_CACHEKEY }}
+          fail-on-cache-miss: true
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
       - uses: actions-rs/tarpaulin@v0.1
         with:
           # Constrained by https://github.com/actions-rs/tarpaulin/pull/23

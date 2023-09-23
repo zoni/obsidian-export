@@ -1,9 +1,12 @@
+name: Create release
 on:
   push:
     tags:
       - "v*"
 
-name: Create release
+env:
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
 
 jobs:
   create-release:
@@ -28,17 +31,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
+        id: setup_rust
+      - uses: actions/cache@v3
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: "cargo-build-linux-${{ steps.setup_rust.outputs.cachekey }}"
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --locked
-
+      - run: cargo build --release --locked
       - run: strip target/release/obsidian-export
 
       - uses: actions/upload-artifact@v3
@@ -62,17 +69,21 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
+        id: setup_rust
+      - uses: actions/cache@v3
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: "cargo-build-linux-${{ steps.setup_rust.outputs.cachekey }}"
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --locked
-
+      - run: cargo build --release --locked
       - run: strip target/release/obsidian-export.exe
 
       - uses: actions/upload-artifact@v3
@@ -96,17 +107,21 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
+        id: setup_rust
+      - uses: actions/cache@v3
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: "cargo-build-linux-${{ steps.setup_rust.outputs.cachekey }}"
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --locked
-
+      - run: cargo build --release --locked
       - run: strip target/release/obsidian-export
 
       - uses: actions/upload-artifact@v3
