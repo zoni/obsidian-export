@@ -324,9 +324,10 @@ If you don't feel comfortable writing user documentation, I will be happy to gui
 
 # License
 
-Obsidian-export is dual-licensed under the [Apache 2.0] and the [MIT] licenses.
+Obsidian-export is open-source software released under the [BSD-2-Clause Plus Patent License].
+This license is designed to provide: a) a simple permissive license; b) that is compatible with the GNU General Public License (GPL), version 2; and c) which also has an express patent grant included.
 
-Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in this project by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
+Please review the [LICENSE] file for the full text of the license.
 
 
 # Changelog
@@ -1098,8 +1099,8 @@ notable new feature.
 [Hugo]: https://gohugo.io
 [`ref` and `relref` shortcodes]: https://gohugo.io/content-management/cross-references/
 [Markdown Render Hooks]: https://gohugo.io/getting-started/configuration-markup#markdown-render-hooks
-[Apache 2.0]: https://github.com/zoni/obsidian-export/blob/master/LICENSE-APACHE
-[MIT]: https://github.com/zoni/obsidian-export/blob/master/LICENSE-MIT
+[BSD-2-Clause Plus Patent License]: https://spdx.org/licenses/BSD-2-Clause-Patent.html
+[LICENSE]: LICENSE
 [slug]: https://crates.io/crates/slug
 [arbitrary blocks]: https://publish.obsidian.md/help/How+to/Link+to+blocks
 [gitchangelog]: https://github.com/vaab/gitchangelog

@@ -1,8 +1,9 @@
 # License
 
-Obsidian-export is dual-licensed under the [Apache 2.0] and the [MIT] licenses.
+Obsidian-export is open-source software released under the [BSD-2-Clause Plus Patent License].
+This license is designed to provide: a) a simple permissive license; b) that is compatible with the GNU General Public License (GPL), version 2; and c) which also has an express patent grant included.
 
-Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in this project by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
+Please review the [LICENSE] file for the full text of the license.
 
-[Apache 2.0]: https://github.com/zoni/obsidian-export/blob/master/LICENSE-APACHE
-[MIT]: https://github.com/zoni/obsidian-export/blob/master/LICENSE-MIT
+[BSD-2-Clause Plus Patent License]: https://spdx.org/licenses/BSD-2-Clause-Patent.html
+[LICENSE]: LICENSE
