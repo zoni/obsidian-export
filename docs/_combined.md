@@ -6,4 +6,4 @@
 ![[usage-library]]
 ![[contributing]]
 ![[license]]
-![[CHANGES]]
+![[changelog]]
