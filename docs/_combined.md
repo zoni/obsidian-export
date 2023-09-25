@@ -4,6 +4,6 @@
 ![[usage-basic]]
 ![[usage-advanced]]
 ![[usage-library]]
-![[contributing]]
+![[contribute]]
 ![[license]]
 ![[changelog]]
