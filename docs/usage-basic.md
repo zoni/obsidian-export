@@ -3,7 +3,7 @@
 The main interface of _obsidian-export_ is the `obsidian-export` CLI command.
 As a text interface, this must be run from a terminal or Windows PowerShell.
 
-It is assumed that you have basic familiarity with command-line interfaces and that you set up your `PATH` correctly if you installed with `cargo`. 
+It is assumed that you have basic familiarity with command-line interfaces and that you set up your `PATH` correctly if you installed with `cargo`.
 Running `obsidian-export --version` should print a version number rather than giving some kind of error.
 
 > If you downloaded a pre-built binary and didn't put it a location referenced by `PATH` (for example, you put it in `Downloads`), you will need to provide the full path to the binary instead.
@@ -44,7 +44,7 @@ Using the `--start-at` argument, you can export just a subset of your vault.
 Given the following vault structure:
 
 ```
-my-obsidian-vault 
+my-obsidian-vault
 ├── Notes/
 ├── Books/
 └── People/

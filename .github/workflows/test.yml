@@ -58,6 +58,47 @@ jobs:
       - run: cargo check
       - run: cargo clippy -- -D warnings
 
+
+  pre-commit:
+    name: Run pre-commit
+    runs-on: ubuntu-latest
+    needs: build
+    env:
+      # These hooks are expensive and already run as dedicated jobs above
+      SKIP: "tests,clippy"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: "cargo-lint-${{ needs.build.outputs.rustc_cache_key }}-${{ hashFiles('**/Cargo.lock') }}"
+          restore-keys: |
+            cargo-lint-${{ env.RUSTC_CACHEKEY }}
+            cargo-base-${{ env.RUSTC_CACHEKEY }}
+          fail-on-cache-miss: true
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - uses: actions/setup-python@v3
+      - name: set PYVERSION
+        run: echo "PYVERSION=$(python --version | tr ' ' '-')" >> $GITHUB_ENV
+      - uses: actions/cache@v3
+        with:
+          path: ~/.cache/pre-commit
+          # Changes to pre-commit-config.yaml may require the installation of
+          # new binaries/scripts. When a cache hit occurs, changes to the cache
+          # aren't persisted at the end of the run, so making the key dependent
+          # on the configuration file ensures we always persist a complete cache.
+          key: pre-commit-${{ env.PYVERSION }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - run: pip install pre-commit
+      - run: pre-commit run --all --color=always --show-diff-on-failure
+
   test-linux:
     name: Test on Linux
     runs-on: ubuntu-latest

@@ -2,9 +2,15 @@
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: 9136088a246768144165fcc3ecc3d31bb686920a # frozen: v3.3.0
+    rev: 38b88246ccc552bffaaf54259d064beeee434539 # frozen: v4.0.1
     hooks:
+      - id: check-case-conflict
+      - id: check-symlinks
       - id: check-yaml
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+        exclude: '^(README.md|tests/testdata/expected/.*)$'
   - repo: local
     hooks:
       - id: rustfmt
