@@ -39,7 +39,7 @@ Code is formatted with [rustfmt](https://github.com/rust-lang/rustfmt) using the
 In addition, all default [clippy](https://github.com/rust-lang/rust-clippy) checks on the latest stable Rust compiler must also pass.
 Both of these are enforced through CI using GitHub actions.
 
-> **💡 Tip: install pre-commit hooks** 
+> **💡 Tip: install pre-commit hooks**
 >
 > This codebase is set up with the [pre-commit framework](https://pre-commit.com/) to automatically run the appropriate checks locally whenever you commit.
 > Assuming you [have pre-commit installed](https://pre-commit.com/#install), all you need to do is run `pre-commit install` once to get this set up.

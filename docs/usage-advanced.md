@@ -112,4 +112,4 @@ With these hooks in place, links to both notes as well as file attachments shoul
 [gitignore]: https://git-scm.com/docs/gitignore
 [hugo-relative-linking]: https://notes.nick.groenen.me/notes/relative-linking-in-hugo/
 [hugo]: https://gohugo.io
-[markdown render hooks]: https://gohugo.io/getting-started/configuration-markup#markdown-render-hooks 
+[markdown render hooks]: https://gohugo.io/getting-started/configuration-markup#markdown-render-hooks

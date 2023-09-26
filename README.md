@@ -6,7 +6,7 @@ WARNING:
   the docs directory.
 
   Instead of editing README.md, edit the corresponding Markdown files in the
-  docs directory and run generate.sh. 
+  docs directory and run generate.sh.
 
   To add new sections, create new files under docs and add these to _combined.md
 
@@ -58,7 +58,7 @@ If you built from source, upgrade by running `cargo install obsidian-export` aga
 The main interface of *obsidian-export* is the `obsidian-export` CLI command.
 As a text interface, this must be run from a terminal or Windows PowerShell.
 
-It is assumed that you have basic familiarity with command-line interfaces and that you set up your `PATH` correctly if you installed with `cargo`. 
+It is assumed that you have basic familiarity with command-line interfaces and that you set up your `PATH` correctly if you installed with `cargo`.
 Running `obsidian-export --version` should print a version number rather than giving some kind of error.
 
  > 
@@ -101,7 +101,7 @@ Using the `--start-at` argument, you can export just a subset of your vault.
 Given the following vault structure:
 
 ````
-my-obsidian-vault 
+my-obsidian-vault
 ├── Notes/
 ├── Books/
 └── People/
