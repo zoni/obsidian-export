@@ -1,6 +1,6 @@
 use obsidian_export::postprocessors::softbreaks_to_hardbreaks;
 use obsidian_export::{
-    Context, EmbedPostprocess, Exporter, MarkdownEvents, Postprocess, PostprocessorResult,
+    Context, EmbedPostprocessor, Exporter, MarkdownEvents, Postprocessor, PostprocessorResult,
 };
 use pretty_assertions::assert_eq;
 use pulldown_cmark::{CowStr, Event};
@@ -148,7 +148,7 @@ fn test_postprocessor_impl() {
         parents: Mutex<HashSet<PathBuf>>,
         embeds: Mutex<u32>,
     }
-    impl Postprocess for Impl {
+    impl Postprocessor for Impl {
         fn postprocess(
             &self,
             ctx: &mut Context,
@@ -161,7 +161,7 @@ fn test_postprocessor_impl() {
             PostprocessorResult::Continue
         }
     }
-    impl EmbedPostprocess for Impl {
+    impl EmbedPostprocessor for Impl {
         fn embed_postprocess(
             &self,
             _ctx: &mut Context,
