@@ -1,7 +1,7 @@
 use eyre::{eyre, Result};
 use gumdrop::Options;
-use obsidian_export::postprocessors::softbreaks_to_hardbreaks;
-use obsidian_export::{ExportError, Exporter, FrontmatterStrategy, WalkOptions};
+use obsidian_export::{postprocessors::*, ExportError};
+use obsidian_export::{Exporter, FrontmatterStrategy, WalkOptions};
 use std::{env, path::PathBuf};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -39,12 +39,18 @@ struct Opts {
     )]
     ignore_file: String,
 
+    #[options(no_short, help = "Exclude files with this tag from the export")]
+    skip_tags: Vec<String>,
+
+    #[options(no_short, help = "Only include files with this tag in the export")]
+    only_tags: Vec<String>,
+
     #[options(
         no_short,
-        help = "Exclude files with this keyword in the frontmatter from export",
+        help = "Exclude files with this flag in the frontmatter from the export",
         default = "private"
     )]
-    ignore_frontmatter_keyword: String,
+    ignore_frontmatter_flag: String,
 
     #[options(no_short, help = "Export hidden files", default = "false")]
     hidden: bool,
@@ -62,6 +68,14 @@ struct Opts {
     )]
     hard_linebreaks: bool,
 }
+
+// fn comma_separated(input: &str) -> Result<Vec<String>> {
+//     Ok(if input.is_empty() {
+//         Vec::new()
+//     } else {
+//         input.split(",").map(|s| s.trim().to_string()).collect()
+//     })
+// }
 
 fn frontmatter_strategy_from_str(input: &str) -> Result<FrontmatterStrategy> {
     match input {
@@ -100,6 +114,12 @@ fn main() {
     if args.hard_linebreaks {
         exporter.add_postprocessor(&softbreaks_to_hardbreaks);
     }
+
+    let frontmatter_flag_postprocessor = filter_by_frontmatter_flag(args.ignore_frontmatter_flag);
+    exporter.add_postprocessor(&frontmatter_flag_postprocessor);
+
+    let tags_postprocessor = filter_by_tags(args.skip_tags, args.only_tags);
+    exporter.add_postprocessor(&tags_postprocessor);
 
     if let Some(path) = args.start_at {
         exporter.start_at(path);

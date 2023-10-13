@@ -44,7 +44,7 @@ fn test_postprocessors() {
     exporter.run().unwrap();
 
     let expected = read_to_string("tests/testdata/expected/postprocessors/Note.md").unwrap();
-    let actual = read_to_string(tmp_dir.path().clone().join(PathBuf::from("Note.md"))).unwrap();
+    let actual = read_to_string(tmp_dir.path().join(PathBuf::from("Note.md"))).unwrap();
     assert_eq!(expected, actual);
 }
 
@@ -66,7 +66,7 @@ fn test_postprocessor_stophere() {
 #[test]
 fn test_postprocessor_stop_and_skip() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
-    let note_path = tmp_dir.path().clone().join(PathBuf::from("Note.md"));
+    let note_path = tmp_dir.path().join(PathBuf::from("Note.md"));
 
     let mut exporter = Exporter::new(
         PathBuf::from("tests/testdata/input/postprocessors"),
@@ -86,7 +86,7 @@ fn test_postprocessor_stop_and_skip() {
 #[test]
 fn test_postprocessor_change_destination() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
-    let original_note_path = tmp_dir.path().clone().join(PathBuf::from("Note.md"));
+    let original_note_path = tmp_dir.path().join(PathBuf::from("Note.md"));
     let mut exporter = Exporter::new(
         PathBuf::from("tests/testdata/input/postprocessors"),
         tmp_dir.path().to_path_buf(),
@@ -102,7 +102,7 @@ fn test_postprocessor_change_destination() {
     });
     exporter.run().unwrap();
 
-    let new_note_path = tmp_dir.path().clone().join(PathBuf::from("MovedNote.md"));
+    let new_note_path = tmp_dir.path().join(PathBuf::from("MovedNote.md"));
     assert!(!original_note_path.exists());
     assert!(new_note_path.exists());
 }
@@ -131,7 +131,7 @@ fn test_postprocessor_stateful_callback() {
 
     exporter.run().unwrap();
 
-    let expected = tmp_dir.path().clone();
+    let expected = tmp_dir.path();
 
     let parents = parents.lock().unwrap();
     println!("{:?}", parents);
@@ -158,7 +158,7 @@ fn test_embed_postprocessors() {
     let expected =
         read_to_string("tests/testdata/expected/postprocessors/Note_embed_postprocess_only.md")
             .unwrap();
-    let actual = read_to_string(tmp_dir.path().clone().join(PathBuf::from("Note.md"))).unwrap();
+    let actual = read_to_string(tmp_dir.path().join(PathBuf::from("Note.md"))).unwrap();
     assert_eq!(expected, actual);
 }
 
@@ -178,7 +178,7 @@ fn test_embed_postprocessors_stop_and_skip() {
     let expected =
         read_to_string("tests/testdata/expected/postprocessors/Note_embed_stop_and_skip.md")
             .unwrap();
-    let actual = read_to_string(tmp_dir.path().clone().join(PathBuf::from("Note.md"))).unwrap();
+    let actual = read_to_string(tmp_dir.path().join(PathBuf::from("Note.md"))).unwrap();
     assert_eq!(expected, actual);
 }
 
@@ -244,12 +244,6 @@ fn test_softbreaks_to_hardbreaks() {
 
     let expected =
         read_to_string("tests/testdata/expected/postprocessors/hard_linebreaks.md").unwrap();
-    let actual = read_to_string(
-        tmp_dir
-            .path()
-            .clone()
-            .join(PathBuf::from("hard_linebreaks.md")),
-    )
-    .unwrap();
+    let actual = read_to_string(tmp_dir.path().join(PathBuf::from("hard_linebreaks.md"))).unwrap();
     assert_eq!(expected, actual);
 }

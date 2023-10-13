@@ -305,6 +305,7 @@ impl<'a> Exporter<'a> {
         self.frontmatter_strategy = strategy;
         self
     }
+
     /// Set the frontmatter keyword that excludes files from being exported.
     pub fn ignore_frontmatter_keyword(&mut self, keyword: &'a str) -> &mut Exporter<'a> {
         self.ignore_frontmatter_keyword = keyword;
@@ -410,39 +411,34 @@ impl<'a> Exporter<'a> {
         let mut context = Context::new(src.to_path_buf(), dest.to_path_buf());
 
         let (frontmatter, mut markdown_events) = self.parse_obsidian_note(src, &context)?;
-        match frontmatter.get(self.ignore_frontmatter_keyword) {
-            Some(serde_yaml::Value::Bool(true)) => Ok(()),
-            _ => {
-                context.frontmatter = frontmatter;
-                for func in &self.postprocessors {
-                    match func(&mut context, &mut markdown_events) {
-                        PostprocessorResult::StopHere => break,
-                        PostprocessorResult::StopAndSkipNote => return Ok(()),
-                        PostprocessorResult::Continue => (),
-                    }
-                }
-
-                let dest = context.destination;
-                let mut outfile = create_file(&dest)?;
-                let write_frontmatter = match self.frontmatter_strategy {
-                    FrontmatterStrategy::Always => true,
-                    FrontmatterStrategy::Never => false,
-                    FrontmatterStrategy::Auto => !context.frontmatter.is_empty(),
-                };
-                if write_frontmatter {
-                    let mut frontmatter_str = frontmatter_to_str(context.frontmatter)
-                        .context(FrontMatterEncodeSnafu { path: src })?;
-                    frontmatter_str.push('\n');
-                    outfile
-                        .write_all(frontmatter_str.as_bytes())
-                        .context(WriteSnafu { path: &dest })?;
-                }
-                outfile
-                    .write_all(render_mdevents_to_mdtext(markdown_events).as_bytes())
-                    .context(WriteSnafu { path: &dest })?;
-                Ok(())
+        context.frontmatter = frontmatter;
+        for func in &self.postprocessors {
+            match func(&mut context, &mut markdown_events) {
+                PostprocessorResult::StopHere => break,
+                PostprocessorResult::StopAndSkipNote => return Ok(()),
+                PostprocessorResult::Continue => (),
             }
         }
+
+        let dest = context.destination;
+        let mut outfile = create_file(&dest)?;
+        let write_frontmatter = match self.frontmatter_strategy {
+            FrontmatterStrategy::Always => true,
+            FrontmatterStrategy::Never => false,
+            FrontmatterStrategy::Auto => !context.frontmatter.is_empty(),
+        };
+        if write_frontmatter {
+            let mut frontmatter_str = frontmatter_to_str(context.frontmatter)
+                .context(FrontMatterEncodeSnafu { path: src })?;
+            frontmatter_str.push('\n');
+            outfile
+                .write_all(frontmatter_str.as_bytes())
+                .context(WriteSnafu { path: &dest })?;
+        }
+        outfile
+            .write_all(render_mdevents_to_mdtext(markdown_events).as_bytes())
+            .context(WriteSnafu { path: &dest })?;
+        Ok(())
     }
 
     fn parse_obsidian_note<'b>(
