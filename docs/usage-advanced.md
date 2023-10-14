@@ -13,6 +13,7 @@ To completely remove any frontmatter from exported notes, use `--frontmatter=nev
 ## Ignoring files
 
 The following files are not exported by default:
+
 * hidden files (can be adjusted with `--hidden`)
 * files mattching a pattern listed in `.export-ignore` (can be adjusted with `--ignore-file`)
 * any files that are ignored by git (can be adjusted with `--no-git`)
