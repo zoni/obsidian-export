@@ -42,7 +42,7 @@ struct Opts {
     #[options(no_short, help = "Exclude files with this tag from the export")]
     skip_tags: Vec<String>,
 
-    #[options(no_short, help = "Only include files with this tag in the export")]
+    #[options(no_short, help = "Export only files with this tag")]
     only_tags: Vec<String>,
 
     #[options(
