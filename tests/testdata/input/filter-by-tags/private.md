@@ -1,4 +1,5 @@
 ---
-private: true
+tags: [private]
 ---
+
 A private note.

@@ -306,12 +306,6 @@ impl<'a> Exporter<'a> {
         self
     }
 
-    /// Set the frontmatter keyword that excludes files from being exported.
-    pub fn ignore_frontmatter_keyword(&mut self, keyword: &'a str) -> &mut Exporter<'a> {
-        self.ignore_frontmatter_keyword = keyword;
-        self
-    }
-
     /// Set the behavior when recursive embeds are encountered.
     ///
     /// When `recursive` is true (the default), emdeds are always processed recursively. This may

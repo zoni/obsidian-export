@@ -46,14 +46,3 @@ pub fn filter_by_tags(
         }
     }
 }
-
-pub fn filter_by_frontmatter_flag(
-    flag: String,
-) -> impl Fn(&mut Context, &mut MarkdownEvents) -> PostprocessorResult {
-    move |context: &mut Context, _events: &mut MarkdownEvents| -> PostprocessorResult {
-        match context.frontmatter.get(flag.as_str()) {
-            Some(Value::Bool(true)) => PostprocessorResult::StopAndSkipNote,
-            _ => PostprocessorResult::Continue,
-        }
-    }
-}
