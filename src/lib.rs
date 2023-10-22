@@ -39,8 +39,8 @@ pub type MarkdownEvents<'a> = Vec<Event<'a>>;
 /// converted to regular markdown syntax.
 ///
 /// Postprocessors are called in the order they've been added through [Exporter::add_postprocessor]
-/// just before notes are written out to their final destination.
-/// They may be used to achieve the following:
+/// or [Exporter::add_postprocessor_impl] just before notes are written out to their final
+/// destination. They may be used to achieve the following:
 ///
 /// 1. Modify a note's [Context], for example to change the destination filename or update its [Frontmatter] (see [Context::frontmatter]).
 /// 2. Change a note's contents by altering [MarkdownEvents].
@@ -54,7 +54,7 @@ pub type MarkdownEvents<'a> = Vec<Event<'a>>;
 ///
 /// In some cases it may be desirable to change the contents of these embedded notes *before* they
 /// are inserted into the final document. This is possible through the use of
-/// [Exporter::add_embed_postprocessor].
+/// [Exporter::add_embed_postprocessor] or [Exporter::add_embed_postprocessor_impl].
 /// These "embed postprocessors" run much the same way as regular postprocessors, but they're run on
 /// the note that is about to be embedded in another note. In addition:
 ///
@@ -133,9 +133,44 @@ pub type MarkdownEvents<'a> = Vec<Event<'a>>;
 /// # exporter.run().unwrap();
 /// ```
 
-pub type Postprocessor<'f> =
-    dyn Fn(&mut Context, &mut MarkdownEvents) -> PostprocessorResult + Send + Sync + 'f;
 type Result<T, E = ExportError> = std::result::Result<T, E>;
+
+/// Postprocessor that can be that can be passed to [Exporter::add_postprocessor_impl].
+pub trait Postprocessor: Send + Sync {
+    fn postprocess(&self, ctx: &mut Context, events: &mut MarkdownEvents) -> PostprocessorResult;
+}
+
+/// Postprocessor is implemented for any callback function type that matches the
+/// signature.
+impl<F: Fn(&mut Context, &mut MarkdownEvents) -> PostprocessorResult + Send + Sync> Postprocessor
+    for F
+{
+    fn postprocess(&self, ctx: &mut Context, events: &mut MarkdownEvents) -> PostprocessorResult {
+        self(ctx, events)
+    }
+}
+
+/// EmbedPostprocessor is like [Postprocessor] but for note embeds, and it is passed to
+/// [Exporter::add_embed_postprocessor_impl].
+pub trait EmbedPostprocessor: Send + Sync {
+    fn embed_postprocess(
+        &self,
+        ctx: &mut Context,
+        events: &mut MarkdownEvents,
+    ) -> PostprocessorResult;
+}
+
+impl<F: Fn(&mut Context, &mut MarkdownEvents) -> PostprocessorResult + Send + Sync>
+    EmbedPostprocessor for F
+{
+    fn embed_postprocess(
+        &self,
+        ctx: &mut Context,
+        events: &mut MarkdownEvents,
+    ) -> PostprocessorResult {
+        self(ctx, events)
+    }
+}
 
 const PERCENTENCODE_CHARS: &AsciiSet = &CONTROLS.add(b' ').add(b'(').add(b')').add(b'%').add(b'?');
 const NOTE_RECURSION_LIMIT: usize = 10;
@@ -231,8 +266,8 @@ pub struct Exporter<'a> {
     vault_contents: Option<Vec<PathBuf>>,
     walk_options: WalkOptions<'a>,
     process_embeds_recursively: bool,
-    postprocessors: Vec<&'a Postprocessor<'a>>,
-    embed_postprocessors: Vec<&'a Postprocessor<'a>>,
+    postprocessors: Vec<&'a dyn Postprocessor>,
+    embed_postprocessors: Vec<&'a dyn EmbedPostprocessor>,
 }
 
 impl<'a> fmt::Debug for Exporter<'a> {
@@ -314,13 +349,37 @@ impl<'a> Exporter<'a> {
     }
 
     /// Append a function to the chain of [postprocessors][Postprocessor] to run on exported Obsidian Markdown notes.
-    pub fn add_postprocessor(&mut self, processor: &'a Postprocessor) -> &mut Exporter<'a> {
+    pub fn add_postprocessor(
+        &mut self,
+        processor: &'a (impl Fn(&mut Context, &mut MarkdownEvents) -> PostprocessorResult + Send + Sync),
+    ) -> &mut Exporter<'a> {
         self.postprocessors.push(processor);
         self
     }
 
-    /// Append a function to the chain of [postprocessors][Postprocessor] for embeds.
-    pub fn add_embed_postprocessor(&mut self, processor: &'a Postprocessor) -> &mut Exporter<'a> {
+    /// Append a trait object to the chain of [postprocessors] to run on Obsidian Markdown notes.
+    pub fn add_postprocessor_impl(
+        &mut self,
+        processor: &'a dyn Postprocessor,
+    ) -> &mut Exporter<'a> {
+        self.postprocessors.push(processor);
+        self
+    }
+
+    /// Append a function to the chain of [postprocessors][EmbedPostprocessor] for embeds.
+    pub fn add_embed_postprocessor(
+        &mut self,
+        processor: &'a (impl Fn(&mut Context, &mut MarkdownEvents) -> PostprocessorResult + Send + Sync),
+    ) -> &mut Exporter<'a> {
+        self.embed_postprocessors.push(processor);
+        self
+    }
+
+    /// Append a trait object to the chain of [postprocessors] for embeds.
+    pub fn add_embed_postprocessor_impl(
+        &mut self,
+        processor: &'a dyn EmbedPostprocessor,
+    ) -> &mut Exporter<'a> {
         self.embed_postprocessors.push(processor);
         self
     }
@@ -400,8 +459,8 @@ impl<'a> Exporter<'a> {
 
         let (frontmatter, mut markdown_events) = self.parse_obsidian_note(src, &context)?;
         context.frontmatter = frontmatter;
-        for func in &self.postprocessors {
-            match func(&mut context, &mut markdown_events) {
+        for processor in &self.postprocessors {
+            match processor.postprocess(&mut context, &mut markdown_events) {
                 PostprocessorResult::StopHere => break,
                 PostprocessorResult::StopAndSkipNote => return Ok(()),
                 PostprocessorResult::Continue => (),
@@ -603,10 +662,10 @@ impl<'a> Exporter<'a> {
                 if let Some(section) = note_ref.section {
                     events = reduce_to_section(events, section);
                 }
-                for func in &self.embed_postprocessors {
+                for processor in &self.embed_postprocessors {
                     // Postprocessors running on embeds shouldn't be able to change frontmatter (or
                     // any other metadata), so we give them a clone of the context.
-                    match func(&mut child_context, &mut events) {
+                    match processor.embed_postprocess(&mut child_context, &mut events) {
                         PostprocessorResult::StopHere => break,
                         PostprocessorResult::StopAndSkipNote => {
                             events = vec![];
