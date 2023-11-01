@@ -228,7 +228,6 @@ pub struct Exporter<'a> {
     destination: PathBuf,
     start_at: PathBuf,
     frontmatter_strategy: FrontmatterStrategy,
-    ignore_frontmatter_keyword: &'a str,
     vault_contents: Option<Vec<PathBuf>>,
     walk_options: WalkOptions<'a>,
     process_embeds_recursively: bool,
@@ -242,10 +241,6 @@ impl<'a> fmt::Debug for Exporter<'a> {
             .field("root", &self.root)
             .field("destination", &self.destination)
             .field("frontmatter_strategy", &self.frontmatter_strategy)
-            .field(
-                "ignore_frontmatter_keyword",
-                &self.ignore_frontmatter_keyword,
-            )
             .field("vault_contents", &self.vault_contents)
             .field("walk_options", &self.walk_options)
             .field(
@@ -276,7 +271,6 @@ impl<'a> Exporter<'a> {
             root,
             destination,
             frontmatter_strategy: FrontmatterStrategy::Auto,
-            ignore_frontmatter_keyword: "private",
             walk_options: WalkOptions::default(),
             process_embeds_recursively: true,
             vault_contents: None,
