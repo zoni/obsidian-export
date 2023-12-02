@@ -73,9 +73,9 @@ impl<'a> ObsidianNoteReference<'a> {
         let captures = OBSIDIAN_NOTE_LINK_RE
             .captures(text)
             .expect("note link regex didn't match - bad input?");
-        let file = captures.name("file").map(|v| v.as_str());
+        let file = captures.name("file").map(|v| v.as_str().trim());
         let label = captures.name("label").map(|v| v.as_str());
-        let section = captures.name("section").map(|v| v.as_str());
+        let section = captures.name("section").map(|v| v.as_str().trim());
 
         ObsidianNoteReference {
             file,
