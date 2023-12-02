@@ -1,7 +1,7 @@
 use eyre::{eyre, Result};
 use gumdrop::Options;
-use obsidian_export::postprocessors::softbreaks_to_hardbreaks;
-use obsidian_export::{ExportError, Exporter, FrontmatterStrategy, WalkOptions};
+use obsidian_export::{postprocessors::*, ExportError};
+use obsidian_export::{Exporter, FrontmatterStrategy, WalkOptions};
 use std::{env, path::PathBuf};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -38,6 +38,12 @@ struct Opts {
         default = ".export-ignore"
     )]
     ignore_file: String,
+
+    #[options(no_short, help = "Exclude files with this tag from the export")]
+    skip_tags: Vec<String>,
+
+    #[options(no_short, help = "Export only files with this tag")]
+    only_tags: Vec<String>,
 
     #[options(no_short, help = "Export hidden files", default = "false")]
     hidden: bool,
@@ -93,6 +99,9 @@ fn main() {
     if args.hard_linebreaks {
         exporter.add_postprocessor(&softbreaks_to_hardbreaks);
     }
+
+    let tags_postprocessor = filter_by_tags(args.skip_tags, args.only_tags);
+    exporter.add_postprocessor(&tags_postprocessor);
 
     if let Some(path) = args.start_at {
         exporter.start_at(path);
