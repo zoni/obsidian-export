@@ -1,5 +1,58 @@
 # Changelog
 
+## v23.12.0 (2023-12-03)
+
+### New
+
+- Implement frontmatter based filtering (#163) [Martin Heuschober]
+
+  This allows limiting the notes that will be exported using `--skip-tags` and `--only-tags`:
+
+  - using `--skip-tags foo --skip-tags bar` will skip any files that have the tags `foo` or `bar` in their frontmatter
+  - using `--only-tags foo --only-tags bar` will skip any files that **don't** have the tags `foo` or `bar` in their frontmatter
+
+### Fixes
+
+- Trim filenames while resolving wikilinks [Nick Groenen]
+
+  Obsidian trims the filename part in a [[WikiLink|label]], so each of
+  these are equivalent:
+
+  ```
+  [[wikilink]]
+  [[ wikilink ]]
+  [[ wikilink |wikilink]]
+  ```
+
+  Obsidian-export now behaves similarly.
+
+  Fixes #188
+
+### Other
+
+- Relicense to BSD-2-Clause Plus Patent License [Nick Groenen]
+
+  This license achieves everything that dual-licensing under MIT + Apache
+  aims for, but without the weirdness of being under two licenses.
+
+  Having checked external contributions, I feel pretty confident that I
+  can unilaterally make this license change, as people have only
+  contributed a handful of one-line changes of no significance towards
+  copyrighted work up to this point.
+
+
+- Add a lifetime annotation to the Postprocesor type [Robert Sesek]
+
+  This lets the compiler reason about the lifetimes of objects used by the
+  postprocessor, if the callback captures variables.
+
+  See zoni/obsidian-export#175
+
+- Use cargo-dist to create release artifacts [Nick Groenen]
+
+  This will create binaries for more platforms (including ARM builds for
+  MacOS) and installer scripts in addition to just the binaries themselves.
+
 ## v22.11.0 (2022-11-19)
 
 ### New
