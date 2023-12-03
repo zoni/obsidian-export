@@ -15,9 +15,8 @@ To completely remove any frontmatter from exported notes, use `--frontmatter=nev
 The following files are not exported by default:
 
 * hidden files (can be adjusted with `--hidden`)
-* files mattching a pattern listed in `.export-ignore` (can be adjusted with `--ignore-file`)
+* files matching a pattern listed in `.export-ignore` (can be adjusted with `--ignore-file`)
 * any files that are ignored by git (can be adjusted with `--no-git`)
-* any files having `private: true` in their frontmatter (the keyword `private` can be changed with `--ignore-frontmatter-keyword`)
 * using `--skip-tags foo --skip-tags bar` will skip any files that have the tags `foo` or `bar` in their frontmatter
 * using `--only-tags foo --only-tags bar` will skip any files that **don't** have the tags `foo` or `bar` in their frontmatter
 
