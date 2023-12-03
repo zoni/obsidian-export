@@ -2,10 +2,9 @@
 
 ## Pre-built binaries
 
-Binary releases for x86-64 processors are provided for Windows, Linux and Mac operating systems on a best-effort basis.
-They are built with GitHub runners as part of the release workflow defined in `.github/workflows/release.yml`.
+Pre-compiled binaries for all major platforms are available at <https://github.com/zoni/obsidian-export/releases>
 
-The resulting binaries can be downloaded from <https://github.com/zoni/obsidian-export/releases>
+In addition to the installation scripts provided, these releases are also suitable for [installation with cargo-binstall][cargo-binstall].
 
 ## Building from source
 
@@ -24,3 +23,4 @@ If you downloaded a pre-built binary, upgrade by downloading the latest version 
 If you built from source, upgrade by running `cargo install obsidian-export` again.
 
 [Cargo]: https://doc.rust-lang.org/cargo/
+[cargo-binstall]: https://github.com/cargo-bins/cargo-binstall#readme

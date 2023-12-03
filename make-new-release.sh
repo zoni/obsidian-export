@@ -24,10 +24,10 @@ cargo check
 git commit "Cargo.*" --message "Release v${VERSION}"
 git tag "v${VERSION}"
 
-git cliff --latest --prepend CHANGES.md > /dev/null
-${EDITOR:-vim} CHANGES.md
+git cliff --latest --prepend CHANGELOG.md > /dev/null
+${EDITOR:-vim} CHANGELOG.md
 docs/generate.sh
-git add CHANGES.md README.md
+git add CHANGELOG.md README.md
 git commit --amend --no-edit
 git tag "v${VERSION}" --force
 

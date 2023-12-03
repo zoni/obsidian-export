@@ -30,10 +30,9 @@ It supports most but not all of Obsidian's Markdown flavor.
 
 ## Pre-built binaries
 
-Binary releases for x86-64 processors are provided for Windows, Linux and Mac operating systems on a best-effort basis.
-They are built with GitHub runners as part of the release workflow defined in `.github/workflows/release.yml`.
+Pre-compiled binaries for all major platforms are available at <https://github.com/zoni/obsidian-export/releases>
 
-The resulting binaries can be downloaded from <https://github.com/zoni/obsidian-export/releases>
+In addition to the installation scripts provided, these releases are also suitable for [installation with cargo-binstall](https://github.com/cargo-bins/cargo-binstall#readme).
 
 ## Building from source
 
@@ -265,7 +264,7 @@ Please review the [LICENSE] file for the full text of the license.
 
 # Changelog
 
-For a list of releases and the changes with each version, please refer to [CHANGES](CHANGES.md).
+For a list of releases and the changes with each version, please refer to the [CHANGELOG](CHANGELOG.md).
 
 [Obsidian]: https://obsidian.md/
 [CommonMark]: https://commonmark.org/
