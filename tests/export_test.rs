@@ -361,6 +361,44 @@ fn test_no_recursive_embeds() {
 }
 
 #[test]
+fn test_preserve_mtime() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+
+    let mut exporter = Exporter::new(
+        PathBuf::from("tests/testdata/input/main-samples/"),
+        tmp_dir.path().to_path_buf(),
+    );
+    exporter.preserve_mtime(true);
+    exporter.run().expect("exporter returned error");
+
+    let src = "tests/testdata/input/main-samples/obsidian-wikilinks.md";
+    let dest = tmp_dir.path().join(PathBuf::from("obsidian-wikilinks.md"));
+    let src_meta = std::fs::metadata(src).unwrap();
+    let dest_meta = std::fs::metadata(dest).unwrap();
+
+    assert_eq!(src_meta.modified().unwrap(), dest_meta.modified().unwrap());
+}
+
+#[test]
+fn test_no_preserve_mtime() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+
+    let mut exporter = Exporter::new(
+        PathBuf::from("tests/testdata/input/main-samples/"),
+        tmp_dir.path().to_path_buf(),
+    );
+    exporter.preserve_mtime(false);
+    exporter.run().expect("exporter returned error");
+
+    let src = "tests/testdata/input/main-samples/obsidian-wikilinks.md";
+    let dest = tmp_dir.path().join(PathBuf::from("obsidian-wikilinks.md"));
+    let src_meta = std::fs::metadata(src).unwrap();
+    let dest_meta = std::fs::metadata(dest).unwrap();
+
+    assert_ne!(src_meta.modified().unwrap(), dest_meta.modified().unwrap());
+}
+
+#[test]
 fn test_non_ascii_filenames() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
 
