@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 use std::{fmt, str};
 
 pub use context::Context;
+use filetime::set_file_mtime;
 use frontmatter::{frontmatter_from_str, frontmatter_to_str};
 pub use frontmatter::{Frontmatter, FrontmatterStrategy};
 use pathdiff::diff_paths;
@@ -160,6 +161,20 @@ pub enum ExportError {
         source: ignore::Error,
     },
 
+    #[snafu(display("Failed to read the mtime of '{}'", path.display()))]
+    /// This occurs when a file's modified time cannot be read
+    ModTimeReadError {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+
+    #[snafu(display("Failed to set the mtime of '{}'", path.display()))]
+    /// This occurs when a file's modified time cannot be set
+    ModTimeSetError {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+
     #[snafu(display("No such file or directory: {}", path.display()))]
     /// This occurs when an operation is requested on a file or directory which does not exist.
     PathDoesNotExist { path: PathBuf },
@@ -227,6 +242,7 @@ pub struct Exporter<'a> {
     vault_contents: Option<Vec<PathBuf>>,
     walk_options: WalkOptions<'a>,
     process_embeds_recursively: bool,
+    preserve_mtime: bool,
     postprocessors: Vec<&'a Postprocessor<'a>>,
     embed_postprocessors: Vec<&'a Postprocessor<'a>>,
 }
@@ -243,6 +259,7 @@ impl<'a> fmt::Debug for Exporter<'a> {
                 "process_embeds_recursively",
                 &self.process_embeds_recursively,
             )
+            .field("preserve_mtime", &self.preserve_mtime)
             .field(
                 "postprocessors",
                 &format!("<{} postprocessors active>", self.postprocessors.len()),
@@ -270,6 +287,7 @@ impl<'a> Exporter<'a> {
             frontmatter_strategy: FrontmatterStrategy::Auto,
             walk_options: WalkOptions::default(),
             process_embeds_recursively: true,
+            preserve_mtime: false,
             vault_contents: None,
             postprocessors: vec![],
             embed_postprocessors: vec![],
@@ -309,6 +327,15 @@ impl<'a> Exporter<'a> {
     /// original note, instead of embedding it again a link to the note is inserted instead.
     pub fn process_embeds_recursively(&mut self, recursive: bool) -> &mut Self {
         self.process_embeds_recursively = recursive;
+        self
+    }
+
+    /// Set whether the modified time of exported files should be preserved.
+    ///
+    /// When `preserve` is true, the modified time of exported files will be set to the modified
+    /// time of the source file.
+    pub fn preserve_mtime(&mut self, preserve: bool) -> &mut Self {
+        self.preserve_mtime = preserve;
         self
     }
 
@@ -392,7 +419,13 @@ impl<'a> Exporter<'a> {
             true => self.parse_and_export_obsidian_note(src, dest),
             false => copy_file(src, dest),
         }
-        .context(FileExportSnafu { path: src })
+        .context(FileExportSnafu { path: src })?;
+
+        if self.preserve_mtime {
+            copy_mtime(src, dest).context(FileExportSnafu { path: src })?;
+        }
+
+        Ok(())
     }
 
     fn parse_and_export_obsidian_note(&self, src: &Path, dest: &Path) -> Result<()> {
@@ -764,6 +797,16 @@ fn create_file(dest: &Path) -> Result<File> {
         })
         .context(WriteSnafu { path: dest })?;
     Ok(file)
+}
+
+fn copy_mtime(src: &Path, dest: &Path) -> Result<()> {
+    let metadata = fs::metadata(src).context(ModTimeReadSnafu { path: src })?;
+    let modified_time = metadata
+        .modified()
+        .context(ModTimeReadSnafu { path: src })?;
+
+    set_file_mtime(dest, modified_time.into()).context(ModTimeSetSnafu { path: dest })?;
+    Ok(())
 }
 
 fn copy_file(src: &Path, dest: &Path) -> Result<()> {

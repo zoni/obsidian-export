@@ -59,6 +59,13 @@ struct Opts {
 
     #[options(
         no_short,
+        help = "Preserve the mtime of exported files",
+        default = "false"
+    )]
+    preserve_mtime: bool,
+
+    #[options(
+        no_short,
         help = "Convert soft line breaks to hard line breaks. This mimics Obsidian's 'Strict line breaks' setting",
         default = "false"
     )]
@@ -97,6 +104,7 @@ fn main() {
     let mut exporter = Exporter::new(root, destination);
     exporter.frontmatter_strategy(args.frontmatter_strategy);
     exporter.process_embeds_recursively(!args.no_recursive_embeds);
+    exporter.preserve_mtime(args.preserve_mtime);
     exporter.walk_options(walk_options);
 
     if args.hard_linebreaks {
