@@ -23,13 +23,13 @@ use rayon::prelude::*;
 use references::*;
 use slug::slugify;
 use snafu::{ResultExt, Snafu};
-use std::borrow::Cow;
-use std::ffi::{OsStr, OsString};
+
+use std::ffi::OsString;
 use std::fmt;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::ErrorKind;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::str;
 use unicode_normalization::UnicodeNormalization;
 
@@ -271,7 +271,7 @@ impl<'a> Exporter<'a> {
         let destination = expand_home_dir(destination);
         Exporter {
             start_at: root.clone(),
-            root: root,
+            root,
             destination,
             frontmatter_strategy: FrontmatterStrategy::Auto,
             walk_options: WalkOptions::default(),
@@ -893,7 +893,7 @@ fn codeblock_kind_to_owned<'a>(codeblock_kind: CodeBlockKind) -> CodeBlockKind<'
 }
 
 /// Handles ~
-fn expand_home_dir<'a, P: Into<PathBuf>>(path: P) -> PathBuf {
+fn expand_home_dir<P: Into<PathBuf>>(path: P) -> PathBuf {
     let path = path.into();
 
     if !path.starts_with("~") {
