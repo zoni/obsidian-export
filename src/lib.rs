@@ -23,12 +23,13 @@ use rayon::prelude::*;
 use references::*;
 use slug::slugify;
 use snafu::{ResultExt, Snafu};
-use std::ffi::OsString;
+use std::borrow::Cow;
+use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::ErrorKind;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::str;
 use unicode_normalization::UnicodeNormalization;
 
@@ -266,9 +267,11 @@ impl<'a> Exporter<'a> {
     /// Create a new exporter which reads notes from `root` and exports these to
     /// `destination`.
     pub fn new(root: PathBuf, destination: PathBuf) -> Exporter<'a> {
+        let root = expand_home_dir(root);
+        let destination = expand_home_dir(destination);
         Exporter {
             start_at: root.clone(),
-            root,
+            root: root,
             destination,
             frontmatter_strategy: FrontmatterStrategy::Auto,
             walk_options: WalkOptions::default(),
@@ -327,7 +330,7 @@ impl<'a> Exporter<'a> {
 
     /// Export notes using the settings configured on this exporter.
     pub fn run(&mut self) -> Result<()> {
-        if !self.root.exists() {
+        if !self.root.canonicalize().unwrap().exists() {
             return Err(ExportError::PathDoesNotExist {
                 path: self.root.clone(),
             });
@@ -887,6 +890,21 @@ fn codeblock_kind_to_owned<'a>(codeblock_kind: CodeBlockKind) -> CodeBlockKind<'
         CodeBlockKind::Indented => CodeBlockKind::Indented,
         CodeBlockKind::Fenced(cowstr) => CodeBlockKind::Fenced(CowStr::from(cowstr.into_string())),
     }
+}
+
+/// Handles ~
+fn expand_home_dir<'a, P: Into<PathBuf>>(path: P) -> PathBuf {
+    let path = path.into();
+
+    if !path.starts_with("~") {
+        return path;
+    }
+
+    lazy_static! {
+        static ref HOME_DIR: PathBuf = home::home_dir().expect("Unable to find home directory");
+    }
+
+    HOME_DIR.join(path.strip_prefix("~").unwrap())
 }
 
 #[cfg(test)]
