@@ -330,7 +330,7 @@ impl<'a> Exporter<'a> {
 
     /// Export notes using the settings configured on this exporter.
     pub fn run(&mut self) -> Result<()> {
-        if !self.root.canonicalize().unwrap().exists() {
+        if !self.root.exists() {
             return Err(ExportError::PathDoesNotExist {
                 path: self.root.clone(),
             });
