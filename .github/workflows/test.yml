@@ -178,7 +178,7 @@ jobs:
           version: "0.22.0"
           args: "--ignore-tests"
           out-type: "Html"
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: tarpaulin-report
           path: tarpaulin-report.html
