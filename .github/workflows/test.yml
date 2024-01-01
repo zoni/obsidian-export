@@ -84,7 +84,7 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
       - name: set PYVERSION
         run: echo "PYVERSION=$(python --version | tr ' ' '-')" >> $GITHUB_ENV
       - uses: actions/cache@v3
