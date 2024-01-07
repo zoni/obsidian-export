@@ -8,7 +8,7 @@ use serde_yaml::Value;
 use std::collections::HashSet;
 use std::fs::{read_to_string, remove_file};
 use std::path::PathBuf;
-use std::sync::{Mutex};
+use std::sync::Mutex;
 use tempfile::TempDir;
 use walkdir::WalkDir;
 
