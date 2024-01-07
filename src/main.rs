@@ -119,7 +119,7 @@ fn main() {
         if args.link_depth > 0 {
             dont_recurse = false;
             recursive_resolver =
-                RecursiveResolver::new(root, path, destination, shared_state.clone());
+                RecursiveResolver::new(root.clone(), path, destination, shared_state.clone());
             callback = |ctx: &mut obsidian_export::Context,
                         events: &mut Vec<pulldown_cmark::Event<'_>>| {
                 recursive_resolver.postprocess(ctx, events)
@@ -159,6 +159,8 @@ fn main() {
         }
         if dont_recurse || shared_state.update_and_check_should_continue() {
             break;
+        } else if shared_state.get_current_depth() == 1 {
+            exporter.start_at(root.clone());
         }
     }
 }

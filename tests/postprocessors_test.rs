@@ -1,4 +1,6 @@
-use obsidian_export::postprocessors::{filter_by_tags, softbreaks_to_hardbreaks};
+use obsidian_export::postprocessors::{
+    filter_by_tags, softbreaks_to_hardbreaks, RecursiveResolver, SharedResolverState,
+};
 use obsidian_export::{Context, Exporter, MarkdownEvents, PostprocessorResult};
 use pretty_assertions::assert_eq;
 use pulldown_cmark::{CowStr, Event};
@@ -6,7 +8,7 @@ use serde_yaml::Value;
 use std::collections::HashSet;
 use std::fs::{read_to_string, remove_file};
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Mutex};
 use tempfile::TempDir;
 use walkdir::WalkDir;
 
@@ -289,4 +291,48 @@ fn test_filter_by_tags() {
             filename
         );
     }
+}
+
+#[test]
+fn test_start_at_subdir_recursive() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+    let root = PathBuf::from("tests/testdata/input/start-at/");
+    let start_at = PathBuf::from("tests/testdata/input/start-at/subdir/");
+
+    let mut exporter = Exporter::new(root.clone(), tmp_dir.path().to_path_buf());
+    exporter.start_at(start_at.clone());
+
+    let shared_state = SharedResolverState::new(1);
+    let recursive_resolver = RecursiveResolver::new(
+        root.clone(),
+        start_at,
+        tmp_dir.path().to_path_buf(),
+        shared_state.clone(),
+    );
+    let recursive_start_at = |ctx: &mut Context, events: &mut Vec<pulldown_cmark::Event<'_>>| {
+        recursive_resolver.postprocess(ctx, events)
+    };
+    exporter.add_postprocessor(&recursive_start_at);
+
+    for _i in 0..2 {
+        println!("running exporter");
+        exporter.run().unwrap();
+        exporter.start_at(root.clone());
+        shared_state.update_and_check_should_continue();
+        println!("{:?}", shared_state.clone());
+    }
+
+    let expected = if cfg!(windows) {
+        read_to_string("tests/testdata/expected/start-at/recursive/Note B.md")
+            .unwrap()
+            .replace('/', "\\")
+    } else {
+        read_to_string("tests/testdata/expected/start-at/recursive/Note B.md").unwrap()
+    };
+
+    assert_eq!(
+        expected,
+        read_to_string(tmp_dir.path().join(PathBuf::from("Note B.md"))).unwrap(),
+    );
+    assert!(tmp_dir.path().join(PathBuf::from("Note A.md")).exists());
 }

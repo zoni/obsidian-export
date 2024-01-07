@@ -114,6 +114,16 @@ obsidian-export my-obsidian-vault --start-at my-obsidian-vault/Books exported-no
 
 In this mode, all notes under the source (the first argument) are considered part of the vault so any references to these files will remain intact, even if they're not part of the exported notes.
 
+#### Recursive export
+
+If you would like to use `--start-at` but also export notes that are linked from the notes under that subdirectory, you can use the `--link-depth` argument:
+
+````sh
+obsidian-export my-obsidian-vault --start-at my-obsidian-vault/Books --link-depth 1 exported-notes
+````
+
+This will export all notes under `my-obsidian-vault/Books` as well as any notes that are linked from those notes. The level of recursion can be controlled by changing the value of `--link-depth`.
+
 ## Character encodings
 
 At present, UTF-8 character encoding is assumed for all note text as well as filenames.
