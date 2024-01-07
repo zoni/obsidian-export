@@ -27,6 +27,7 @@ doc = false
 [dependencies]
 eyre = "0.6.9"
 gumdrop = "0.8.1"
+home = "0.5.9"
 ignore = "0.4.21"
 lazy_static = "1.4.0"
 matter = "0.1.0-alpha4"
