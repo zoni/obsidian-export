@@ -17,7 +17,7 @@ jobs:
         id: setup_rust
         with:
           components: "rustfmt, clippy"
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -38,7 +38,7 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -68,7 +68,7 @@ jobs:
       SKIP: "tests,clippy"
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -87,7 +87,7 @@ jobs:
       - uses: actions/setup-python@v5
       - name: set PYVERSION
         run: echo "PYVERSION=$(python --version | tr ' ' '-')" >> $GITHUB_ENV
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ~/.cache/pre-commit
           # Changes to pre-commit-config.yaml may require the installation of
@@ -105,7 +105,7 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -132,7 +132,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         id: setup_rust
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -156,7 +156,7 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
