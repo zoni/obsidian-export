@@ -29,7 +29,7 @@ jobs:
           restore-keys: |
             cargo-base-${{ env.RUSTC_CACHEKEY }}
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.4
       - run: cargo build --locked --all-targets
 
   lint:
@@ -52,7 +52,7 @@ jobs:
             cargo-base-${{ env.RUSTC_CACHEKEY }}
           fail-on-cache-miss: true
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.4
 
       - run: cargo fmt --all -- --check
       - run: cargo check
@@ -82,7 +82,7 @@ jobs:
             cargo-base-${{ env.RUSTC_CACHEKEY }}
           fail-on-cache-miss: true
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.4
 
       - uses: actions/setup-python@v5
       - name: set PYVERSION
@@ -119,7 +119,7 @@ jobs:
             cargo-base-${{ env.RUSTC_CACHEKEY }}
           fail-on-cache-miss: true
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.4
 
       - run: cargo test
 
@@ -146,7 +146,7 @@ jobs:
             cargo-base-${{ env.RUSTC_CACHEKEY }}
           fail-on-cache-miss: true
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.4
 
       - run: cargo test
 
@@ -170,7 +170,7 @@ jobs:
             cargo-base-${{ env.RUSTC_CACHEKEY }}
           fail-on-cache-miss: true
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.4
 
       - uses: actions-rs/tarpaulin@v0.1
         with:
