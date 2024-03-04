@@ -45,7 +45,7 @@ unicode-normalization = "0.1.22"
 pretty_assertions = "1.4.0"
 rstest = "0.18.2"
 tempfile = "3.8.1"
-walkdir = "2.4.0"
+walkdir = "2.5.0"
 
 # The profile that 'cargo dist' will build with
 [profile.dist]
