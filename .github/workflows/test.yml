@@ -29,7 +29,7 @@ jobs:
           restore-keys: |
             cargo-base-${{ env.RUSTC_CACHEKEY }}
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@8417cffc2ec64127ad83077aceaa8631f7cdc83e # v0.0.3
+        uses: mozilla-actions/sccache-action@89e9040de88b577a072e3760aaf59f585da083af # v0.0.5
       - run: cargo build --locked --all-targets
 
   lint:
@@ -52,7 +52,7 @@ jobs:
             cargo-base-${{ env.RUSTC_CACHEKEY }}
           fail-on-cache-miss: true
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@8417cffc2ec64127ad83077aceaa8631f7cdc83e # v0.0.3
+        uses: mozilla-actions/sccache-action@89e9040de88b577a072e3760aaf59f585da083af # v0.0.5
 
       - run: cargo fmt --all -- --check
       - run: cargo check
@@ -82,7 +82,7 @@ jobs:
             cargo-base-${{ env.RUSTC_CACHEKEY }}
           fail-on-cache-miss: true
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@8417cffc2ec64127ad83077aceaa8631f7cdc83e # v0.0.3
+        uses: mozilla-actions/sccache-action@89e9040de88b577a072e3760aaf59f585da083af # v0.0.5
 
       - uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5
       - name: set PYVERSION
@@ -119,7 +119,7 @@ jobs:
             cargo-base-${{ env.RUSTC_CACHEKEY }}
           fail-on-cache-miss: true
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@8417cffc2ec64127ad83077aceaa8631f7cdc83e # v0.0.3
+        uses: mozilla-actions/sccache-action@89e9040de88b577a072e3760aaf59f585da083af # v0.0.5
 
       - run: cargo test
 
@@ -146,7 +146,7 @@ jobs:
             cargo-base-${{ env.RUSTC_CACHEKEY }}
           fail-on-cache-miss: true
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@8417cffc2ec64127ad83077aceaa8631f7cdc83e # v0.0.3
+        uses: mozilla-actions/sccache-action@89e9040de88b577a072e3760aaf59f585da083af # v0.0.5
 
       - run: cargo test
 
@@ -170,7 +170,7 @@ jobs:
             cargo-base-${{ env.RUSTC_CACHEKEY }}
           fail-on-cache-miss: true
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@8417cffc2ec64127ad83077aceaa8631f7cdc83e # v0.0.3
+        uses: mozilla-actions/sccache-action@89e9040de88b577a072e3760aaf59f585da083af # v0.0.5
 
       - uses: actions-rs/tarpaulin@044a1e5bdace8dd2f727b1af63c1d9a1d3572068 # v0.1
         with:
