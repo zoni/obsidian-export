@@ -43,7 +43,7 @@ unicode-normalization = "0.1.23"
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
-rstest = "0.18.2"
+rstest = "0.21.0"
 tempfile = "3.10.1"
 walkdir = "2.5.0"
 
