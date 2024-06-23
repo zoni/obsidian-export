@@ -25,26 +25,26 @@ doc = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-eyre = "0.6.9"
+eyre = "0.6.12"
 gumdrop = "0.8.1"
-ignore = "0.4.21"
-lazy_static = "1.4.0"
+ignore = "0.4.22"
+lazy_static = "1.5.0"
 matter = "0.1.0-alpha4"
 pathdiff = "0.2.1"
 percent-encoding = "2.3.1"
 pulldown-cmark = "0.9.3"
 pulldown-cmark-to-cmark = "11.0.2"
 rayon = "1.10.0"
-regex = "1.10.2"
+regex = "1.10.5"
 serde_yaml = "0.9.34"
 slug = "0.1.5"
-snafu = "0.8.2"
-unicode-normalization = "0.1.22"
+snafu = "0.8.3"
+unicode-normalization = "0.1.23"
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
 rstest = "0.18.2"
-tempfile = "3.8.1"
+tempfile = "3.10.1"
 walkdir = "2.5.0"
 
 # The profile that 'cargo dist' will build with
