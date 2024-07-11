@@ -45,6 +45,13 @@ struct Opts {
     #[options(no_short, help = "Export only files with this tag")]
     only_tags: Vec<String>,
 
+    #[options(
+        no_short,
+        help = "Prefix all wikilinks with this path.",
+        default = ""
+    )]
+    wikilink_prefix: String,
+
     #[options(no_short, help = "Export hidden files", default = "false")]
     hidden: bool,
 
@@ -95,6 +102,7 @@ fn main() {
     exporter.frontmatter_strategy(args.frontmatter_strategy);
     exporter.process_embeds_recursively(!args.no_recursive_embeds);
     exporter.walk_options(walk_options);
+    exporter.wikilink_prefix(args.wikilink_prefix);
 
     if args.hard_linebreaks {
         exporter.add_postprocessor(&softbreaks_to_hardbreaks);

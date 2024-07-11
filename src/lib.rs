@@ -230,6 +230,7 @@ pub struct Exporter<'a> {
     frontmatter_strategy: FrontmatterStrategy,
     vault_contents: Option<Vec<PathBuf>>,
     walk_options: WalkOptions<'a>,
+    wikilink_prefix: String,
     process_embeds_recursively: bool,
     postprocessors: Vec<&'a Postprocessor<'a>>,
     embed_postprocessors: Vec<&'a Postprocessor<'a>>,
@@ -242,6 +243,7 @@ impl<'a> fmt::Debug for Exporter<'a> {
             .field("destination", &self.destination)
             .field("frontmatter_strategy", &self.frontmatter_strategy)
             .field("vault_contents", &self.vault_contents)
+            .field("wikilink_prefix", &self.wikilink_prefix)
             .field("walk_options", &self.walk_options)
             .field(
                 "process_embeds_recursively",
@@ -274,6 +276,7 @@ impl<'a> Exporter<'a> {
             walk_options: WalkOptions::default(),
             process_embeds_recursively: true,
             vault_contents: None,
+            wikilink_prefix: "".to_string(),
             postprocessors: vec![],
             embed_postprocessors: vec![],
         }
@@ -291,6 +294,12 @@ impl<'a> Exporter<'a> {
     /// Set the [`WalkOptions`] to be used for this exporter.
     pub fn walk_options(&mut self, options: WalkOptions<'a>) -> &mut Exporter<'a> {
         self.walk_options = options;
+        self
+    }
+
+    /// Set the wikilink_prefix to be used for this exporter.
+    pub fn wikilink_prefix(&mut self, prefix: String) -> &mut Exporter<'a> {
+        self.wikilink_prefix = prefix;
         self
     }
 
@@ -686,7 +695,10 @@ impl<'a> Exporter<'a> {
         .expect("should be able to build relative path when target file is found in vault");
 
         let rel_link = rel_link.to_string_lossy();
-        let mut link = utf8_percent_encode(&rel_link, PERCENTENCODE_CHARS).to_string();
+
+        let full_link = format!("{}{}", self.wikilink_prefix, rel_link);
+
+        let mut link = utf8_percent_encode(&full_link, PERCENTENCODE_CHARS).to_string();
 
         if let Some(section) = reference.section {
             link.push('#');
