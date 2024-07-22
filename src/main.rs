@@ -2,6 +2,7 @@ use eyre::{eyre, Result};
 use gumdrop::Options;
 use obsidian_export::{postprocessors::*, ExportError};
 use obsidian_export::{Exporter, FrontmatterStrategy, WalkOptions};
+use std::sync::Arc;
 use std::{env, path::PathBuf};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -22,6 +23,13 @@ struct Opts {
 
     #[options(no_short, help = "Only export notes under this sub-path")]
     start_at: Option<PathBuf>,
+
+    #[options(
+        no_short,
+        help = "Maximum depth of links to follow when using --start-at. Does nothing if --start-at is not specified",
+        default = "0"
+    )]
+    link_depth: usize,
 
     #[options(
         help = "Frontmatter strategy (one of: always, never, auto)",
@@ -91,7 +99,7 @@ fn main() {
         ..Default::default()
     };
 
-    let mut exporter = Exporter::new(root, destination);
+    let mut exporter = Exporter::new(root.clone(), destination.clone());
     exporter.frontmatter_strategy(args.frontmatter_strategy);
     exporter.process_embeds_recursively(!args.no_recursive_embeds);
     exporter.walk_options(walk_options);
@@ -102,38 +110,57 @@ fn main() {
 
     let tags_postprocessor = filter_by_tags(args.skip_tags, args.only_tags);
     exporter.add_postprocessor(&tags_postprocessor);
-
+    let recursive_resolver: RecursiveResolver;
+    let shared_state: Arc<SharedResolverState> = SharedResolverState::new(args.link_depth);
+    let mut dont_recurse = true;
+    let callback;
     if let Some(path) = args.start_at {
-        exporter.start_at(path);
+        exporter.start_at(path.clone());
+        if args.link_depth > 0 {
+            dont_recurse = false;
+            recursive_resolver =
+                RecursiveResolver::new(root.clone(), path, destination, shared_state.clone());
+            callback = |ctx: &mut obsidian_export::Context,
+                        events: &mut Vec<pulldown_cmark::Event<'_>>| {
+                recursive_resolver.postprocess(ctx, events)
+            };
+            exporter.add_postprocessor(&callback);
+        }
     }
-
-    if let Err(err) = exporter.run() {
-        match err {
-            ExportError::FileExportError {
-                ref path,
-                ref source,
-            } => match &**source {
-                // An arguably better way of enhancing error reports would be to construct a custom
-                // `eyre::EyreHandler`, but that would require a fair amount of boilerplate and
-                // reimplementation of basic reporting.
-                ExportError::RecursionLimitExceeded { file_tree } => {
-                    eprintln!(
-                        "Error: {:?}",
-                        eyre!(
-                            "'{}' exceeds the maximum nesting limit of embeds",
-                            path.display()
-                        )
-                    );
-                    eprintln!("\nFile tree:");
-                    for (idx, path) in file_tree.iter().enumerate() {
-                        eprintln!("  {}-> {}", "  ".repeat(idx), path.display());
+    loop {
+        if let Err(err) = exporter.run() {
+            match err {
+                ExportError::FileExportError {
+                    ref path,
+                    ref source,
+                } => match &**source {
+                    // An arguably better way of enhancing error reports would be to construct a custom
+                    // `eyre::EyreHandler`, but that would require a fair amount of boilerplate and
+                    // reimplementation of basic reporting.
+                    ExportError::RecursionLimitExceeded { file_tree } => {
+                        eprintln!(
+                            "Error: {:?}",
+                            eyre!(
+                                "'{}' exceeds the maximum nesting limit of embeds",
+                                path.display()
+                            )
+                        );
+                        eprintln!("\nFile tree:");
+                        for (idx, path) in file_tree.iter().enumerate() {
+                            eprintln!("  {}-> {}", "  ".repeat(idx), path.display());
+                        }
+                        eprintln!("\nHint: Ensure notes are non-recursive, or specify --no-recursive-embeds to break cycles")
                     }
-                    eprintln!("\nHint: Ensure notes are non-recursive, or specify --no-recursive-embeds to break cycles")
-                }
+                    _ => eprintln!("Error: {:?}", eyre!(err)),
+                },
                 _ => eprintln!("Error: {:?}", eyre!(err)),
-            },
-            _ => eprintln!("Error: {:?}", eyre!(err)),
-        };
-        std::process::exit(1);
-    };
+            };
+            std::process::exit(1);
+        }
+        if dont_recurse || shared_state.update_and_check_should_continue() {
+            break;
+        } else if shared_state.get_current_depth() == 1 {
+            exporter.start_at(root.clone());
+        }
+    }
 }
