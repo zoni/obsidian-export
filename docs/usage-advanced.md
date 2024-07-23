@@ -118,3 +118,26 @@ With these hooks in place, links to both notes as well as file attachments shoul
 [hugo-relative-linking]: https://notes.nick.groenen.me/notes/relative-linking-in-hugo/
 [hugo]: https://gohugo.io
 [markdown render hooks]: https://gohugo.io/getting-started/configuration-markup#markdown-render-hooks
+
+## Removing Obsidian comments
+
+To remove [Obsidian formatted comments](https://help.obsidian.md/Editing+and+formatting/Basic+formatting+syntax#Comments) you can set the `--remove-obsidian-comments` flag. This will remove inline as well as block comments but leave any comments found in codeblocks.
+
+```md
+This is not a comment.
+
+%% This is an inline comment %% This line could have more text.
+
+%%
+This would be a
+block comment and
+all of this would be removed
+%%
+```
+With the `--remove-obsidian-comments` flag. This file would output as
+
+```md
+This is not a comment
+
+This line could have more text.
+```
