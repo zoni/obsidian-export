@@ -1,7 +1,8 @@
 //! A collection of officially maintained [postprocessors][crate::Postprocessor].
 
 use super::{Context, MarkdownEvents, PostprocessorResult};
-use pulldown_cmark::Event;
+use pulldown_cmark::{CowStr, Event, Tag};
+use regex::Regex;
 use serde_yaml::Value;
 
 /// This postprocessor converts all soft line breaks to hard line breaks. Enabling this mimics
@@ -49,6 +50,68 @@ fn filter_by_tags_(
     } else {
         PostprocessorResult::Continue
     }
+}
+
+pub fn remove_obsidian_comments(
+    _context: &mut Context,
+    events: &mut MarkdownEvents,
+) -> PostprocessorResult {
+    let mut output = Vec::with_capacity(events.len());
+    let mut inside_comment = false;
+    let mut inside_codeblock = false;
+
+    for event in &mut *events {
+        output.push(event.to_owned());
+
+        match event {
+            Event::Text(ref text) => {
+                if !text.contains("%%") {
+                    if inside_comment {
+                        output.pop(); //Inside block comment so remove
+                    }
+                    continue;
+                } else if inside_codeblock {
+                    continue; //Skip anything inside codeblocks
+                }
+
+                output.pop();
+
+                if inside_comment {
+                    inside_comment = false;
+                    continue;
+                }
+
+                if !text.eq(&CowStr::from("%%")) {
+                    let re = Regex::new(r"%%.*?%%").unwrap();
+                    let result = re.replace_all(text, "").to_string();
+                    output.push(Event::Text(CowStr::from(result)));
+                    continue;
+                }
+
+                inside_comment = true;
+            }
+            Event::Start(Tag::CodeBlock(_)) => {
+                inside_codeblock = true;
+            }
+            Event::End(Tag::CodeBlock(_)) => {
+                inside_codeblock = false;
+            }
+            Event::End(Tag::Paragraph) => {
+                if output[output.len() - 2] == Event::Start(Tag::Paragraph) {
+                    // If the comment was the only item on the line remove the start and end paragraph events to remove the \n in the output file.
+                    output.pop();
+                    output.pop();
+                }
+            }
+            _ => {
+                if inside_comment {
+                    output.pop();
+                }
+            }
+        }
+    }
+    *events = output;
+    PostprocessorResult::Continue
 }
 
 #[test]
