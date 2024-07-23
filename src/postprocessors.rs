@@ -52,6 +52,8 @@ fn filter_by_tags_(
     }
 }
 
+/// This postprocessor removes all Obsidian comments from a file excluding codeblocks. Enabling this
+/// prohibits comments from being exported but leaves them untouched in the original files
 pub fn remove_obsidian_comments(
     _context: &mut Context,
     events: &mut MarkdownEvents,
