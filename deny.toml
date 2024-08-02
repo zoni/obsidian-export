@@ -1,0 +1,73 @@
+[output]
+# When outputting inclusion graphs in diagnostics that include features, this
+# option can be used to specify the depth at which feature edges will be added.
+# This option is included since the graphs can be quite large and the addition
+# of features from the crate(s) to all of the graph roots can be far too verbose.
+# This option can be overridden via `--feature-depth` on the cmd line
+feature-depth = 1
+
+[advisories]
+# Opt-in to new config format - https://github.com/EmbarkStudios/cargo-deny/pull/611
+version = 2
+
+# The path where the advisory databases are cloned/fetched into
+db-path = "$CARGO_HOME/advisory-dbs"
+# The url(s) of the advisory databases to use
+db-urls = ["https://github.com/rustsec/advisory-db"]
+# A list of advisory IDs to ignore. Note that ignored advisories will still
+# output a note when they are encountered.
+ignore = []
+
+[licenses]
+# Opt-in to new config format - https://github.com/EmbarkStudios/cargo-deny/pull/611
+version = 2
+
+# Licenses we accept, identified by their SPDX short identifier (+ optional
+# exception) from https://spdx.org/licenses/
+allow = [
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-2-Clause-Patent",
+    "BSD-3-Clause",
+    "MIT",
+    "MPL-2.0",
+]
+unused-allowed-license = "allow"
+exceptions = [
+    { allow = ["Unicode-DFS-2016"], crate = "unicode-ident" },
+]
+# Default confidence is 0.8, let's require a higher confidence level for now.
+# We can lower this later if it's too pedantic.
+confidence-threshold = 0.95
+
+[bans]
+# Lint level for when multiple versions of the same crate are detected. Deny
+# for now to make this super obvious, though we might wish to change this back
+# to the default of warn if that gets too disruptive.
+#
+# Background reading about the use of this check is at:
+# https://embarkstudios.github.io/cargo-deny/checks/bans/index.html#use-case---duplicate-version-detection
+multiple-versions = "deny"
+skip = [
+    # When encountering multiple versions of crates that we wish to tolerate,
+    # specify a `<=1.2.3` for the OLDEST version in use. That way, as soon as
+    # whichever dependency holding us back is updated, one of two things can
+    # happen:
+    #
+    # 1. The dependency is updated to a version that is compatible with the
+    #    other dependencies, resolving the duplication. At this point a WARNING
+    #    will be generated that the `<=1.2.3` version no longer matches anything.
+    # 2. The dependency is updated to a version that is still not compatible
+    #    with the other dependencies, at which point the ban action will FAIL the
+    #    result. We can then choose to again skip that version, or decide more
+    #    drastic action is needed.
+    "syn:<=1.0.109",
+]
+wildcards = "deny"
+allow-wildcard-paths = false
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

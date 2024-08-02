@@ -1,0 +1,104 @@
+name: CI tests
+on: [push]
+
+jobs:
+  populate-rust-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+      - uses: ./.github/actions/setup-ci
+        with:
+          rust-cache-shared-key: "base"
+      - run: cargo check --all-targets --all-features
+        continue-on-error: true
+
+  rust-jobs:
+    name: ${{ matrix.job }}
+    runs-on: ubuntu-latest
+    needs: populate-rust-cache
+    strategy:
+      matrix:
+        job:
+          - cargo fmt --all -- --check
+          - cargo test
+          - cargo clippy -- -D warnings
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+      - uses: ./.github/actions/setup-ci
+        with:
+          rust-cache-shared-key: "base"
+      - run: ${{ matrix.job }}
+
+  deny:
+    name: ${{ matrix.job }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        job:
+          - cargo deny --all-features check advisories
+          - cargo deny --all-features check bans licenses sources
+      fail-fast: false
+    # Prevent sudden announcement of a new advisory from failing CI:
+    continue-on-error: ${{ endsWith(matrix.job, 'check advisories') }}
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+      - uses: ./.github/actions/cargo-binstall
+        with:
+          binstall: "cargo-deny"
+      - run: ${{ matrix.job }}
+
+  pre-commit:
+    name: Run pre-commit
+    runs-on: ubuntu-latest
+    needs: populate-rust-cache
+    env:
+      # These hooks are expensive and already run as dedicated jobs above
+      SKIP: "tests,clippy"
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+
+      - uses: ./.github/actions/setup-ci
+        with:
+          rust-cache-shared-key: "base"
+
+      - uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5
+      - name: set PYVERSION
+        run: echo "PYVERSION=$(python --version | tr ' ' '-')" >> $GITHUB_ENV
+
+      - uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
+        with:
+          path: ~/.cache/pre-commit
+          # Changes to pre-commit-config.yaml may require the installation of
+          # new binaries/scripts. When a cache hit occurs, changes to the cache
+          # aren't persisted at the end of the run, so making the key dependent
+          # on the configuration file ensures we always persist a complete cache.
+          key: pre-commit-${{ env.PYVERSION }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - run: pip install pre-commit
+      - run: pre-commit run --all --color=always --show-diff-on-failure
+
+  test-windows:
+    name: Test on Windows
+    runs-on: windows-latest
+    steps:
+      - run: git config --system core.autocrlf false && git config --system core.eol lf
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+      - uses: ./.github/actions/setup-ci
+      - run: cargo test
+
+  coverage:
+    name: Code coverage
+    runs-on: ubuntu-latest
+    needs: populate-rust-cache
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+      - uses: ./.github/actions/setup-ci
+      - uses: ./.github/actions/cargo-binstall
+        with:
+          binstall: "cargo-tarpaulin"
+      - run: cargo tarpaulin --out Html
+      - uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        with:
+          name: tarpaulin-report
+          path: tarpaulin-report.html
