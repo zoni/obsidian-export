@@ -7,8 +7,9 @@ use std::path::{Path, PathBuf};
 type Result<T, E = ExportError> = std::result::Result<T, E>;
 type FilterFn = dyn Fn(&DirEntry) -> bool + Send + Sync + 'static;
 
+/// `WalkOptions` specifies how an Obsidian vault directory is scanned for eligible files to export.
 #[derive(Clone)]
-/// WalkOptions specifies how an Obsidian vault directory is scanned for eligible files to export.
+#[allow(clippy::exhaustive_structs)]
 pub struct WalkOptions<'a> {
     /// The filename for ignore files, following the
     /// [gitignore](https://git-scm.com/docs/gitignore) syntax.
@@ -32,7 +33,7 @@ pub struct WalkOptions<'a> {
 }
 
 impl<'a> fmt::Debug for WalkOptions<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let filter_fn_fmt = match self.filter_fn {
             Some(_) => "<function set>",
             None => "<not set>",
@@ -48,7 +49,8 @@ impl<'a> fmt::Debug for WalkOptions<'a> {
 
 impl<'a> WalkOptions<'a> {
     /// Create a new set of options using default values.
-    pub fn new() -> WalkOptions<'a> {
+    #[must_use]
+    pub fn new() -> Self {
         WalkOptions {
             ignore_filename: ".export-ignore",
             ignore_hidden: true,
@@ -83,12 +85,12 @@ impl<'a> Default for WalkOptions<'a> {
 }
 
 /// `vault_contents` returns all of the files in an Obsidian vault located at `path` which would be
-/// exported when using the given [WalkOptions].
-pub fn vault_contents(path: &Path, opts: WalkOptions) -> Result<Vec<PathBuf>> {
+/// exported when using the given [`WalkOptions`].
+pub fn vault_contents(root: &Path, opts: WalkOptions<'_>) -> Result<Vec<PathBuf>> {
     let mut contents = Vec::new();
-    let walker = opts.build_walker(path);
+    let walker = opts.build_walker(root);
     for entry in walker {
-        let entry = entry.context(WalkDirSnafu { path })?;
+        let entry = entry.context(WalkDirSnafu { path: root })?;
         let path = entry.path();
         let metadata = entry.metadata().context(WalkDirSnafu { path })?;
 

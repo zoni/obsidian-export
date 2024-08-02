@@ -8,7 +8,7 @@ use serde_yaml::Value;
 /// Obsidian's _'Strict line breaks'_ setting.
 pub fn softbreaks_to_hardbreaks(
     _context: &mut Context,
-    events: &mut MarkdownEvents,
+    events: &mut MarkdownEvents<'_>,
 ) -> PostprocessorResult {
     for event in events.iter_mut() {
         if event == &Event::SoftBreak {
@@ -21,8 +21,8 @@ pub fn softbreaks_to_hardbreaks(
 pub fn filter_by_tags(
     skip_tags: Vec<String>,
     only_tags: Vec<String>,
-) -> impl Fn(&mut Context, &mut MarkdownEvents) -> PostprocessorResult {
-    move |context: &mut Context, _events: &mut MarkdownEvents| -> PostprocessorResult {
+) -> impl Fn(&mut Context, &mut MarkdownEvents<'_>) -> PostprocessorResult {
+    move |context: &mut Context, _events: &mut MarkdownEvents<'_>| -> PostprocessorResult {
         match context.frontmatter.get("tags") {
             None => filter_by_tags_(&[], &skip_tags, &only_tags),
             Some(Value::Sequence(tags)) => filter_by_tags_(tags, &skip_tags, &only_tags),

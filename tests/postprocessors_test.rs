@@ -14,7 +14,7 @@ use walkdir::WalkDir;
 fn foo_to_bar(_ctx: &mut Context, events: &mut MarkdownEvents) -> PostprocessorResult {
     for event in events.iter_mut() {
         if let Event::Text(text) = event {
-            *event = Event::Text(CowStr::from(text.replace("foo", "bar")))
+            *event = Event::Text(CowStr::from(text.replace("foo", "bar")));
         }
     }
     PostprocessorResult::Continue
@@ -135,7 +135,7 @@ fn test_postprocessor_stateful_callback() {
     let expected = tmp_dir.path();
 
     let parents = parents.lock().unwrap();
-    println!("{:?}", parents);
+    println!("{parents:?}");
     assert_eq!(1, parents.len());
     assert!(parents.contains(expected));
 }
@@ -209,7 +209,7 @@ fn test_embed_postprocessors_context() {
             panic!(
                 "postprocessor: expected is_root_note in {} to be true, got false",
                 &ctx.current_file().display()
-            )
+            );
         }
         PostprocessorResult::Continue
     });
@@ -225,7 +225,7 @@ fn test_embed_postprocessors_context() {
             panic!(
                 "embed_postprocessor: expected is_root_note in {} to be false, got true",
                 &ctx.current_file().display()
-            )
+            );
         }
         PostprocessorResult::Continue
     });

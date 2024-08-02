@@ -1,5 +1,5 @@
-pub extern crate pulldown_cmark;
-pub extern crate serde_yaml;
+pub use pulldown_cmark;
+pub use serde_yaml;
 
 #[macro_use]
 extern crate lazy_static;
@@ -20,7 +20,7 @@ use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use pulldown_cmark::{CodeBlockKind, CowStr, Event, HeadingLevel, Options, Parser, Tag};
 use pulldown_cmark_to_cmark::cmark_with_options;
 use rayon::prelude::*;
-use references::*;
+use references::{ObsidianNoteReference, RefParser, RefParserState, RefType};
 use slug::slugify;
 use snafu::{ResultExt, Snafu};
 use std::ffi::OsString;
@@ -38,14 +38,14 @@ pub type MarkdownEvents<'a> = Vec<Event<'a>>;
 /// A post-processing function that is to be called after an Obsidian note has been fully parsed and
 /// converted to regular markdown syntax.
 ///
-/// Postprocessors are called in the order they've been added through [Exporter::add_postprocessor]
+/// Postprocessors are called in the order they've been added through [`Exporter::add_postprocessor`]
 /// just before notes are written out to their final destination.
 /// They may be used to achieve the following:
 ///
-/// 1. Modify a note's [Context], for example to change the destination filename or update its [Frontmatter] (see [Context::frontmatter]).
-/// 2. Change a note's contents by altering [MarkdownEvents].
-/// 3. Prevent later postprocessors from running ([PostprocessorResult::StopHere]) or cause a note
-///    to be skipped entirely ([PostprocessorResult::StopAndSkipNote]).
+/// 1. Modify a note's [Context], for example to change the destination filename or update its [Frontmatter] (see [`Context::frontmatter`]).
+/// 2. Change a note's contents by altering [`MarkdownEvents`].
+/// 3. Prevent later postprocessors from running ([`PostprocessorResult::StopHere`]) or cause a note
+///    to be skipped entirely ([`PostprocessorResult::StopAndSkipNote`]).
 ///
 /// # Postprocessors and embeds
 ///
@@ -54,17 +54,17 @@ pub type MarkdownEvents<'a> = Vec<Event<'a>>;
 ///
 /// In some cases it may be desirable to change the contents of these embedded notes *before* they
 /// are inserted into the final document. This is possible through the use of
-/// [Exporter::add_embed_postprocessor].
+/// [`Exporter::add_embed_postprocessor`].
 /// These "embed postprocessors" run much the same way as regular postprocessors, but they're run on
 /// the note that is about to be embedded in another note. In addition:
 ///
 /// - Changes to context carry over to later embed postprocessors, but are then discarded. This
 ///   means that changes to frontmatter do not propagate to the root note for example.
-/// - [PostprocessorResult::StopAndSkipNote] prevents the embedded note from being included (it's
+/// - [`PostprocessorResult::StopAndSkipNote`] prevents the embedded note from being included (it's
 ///   replaced with a blank document) but doesn't affect the root note.
 ///
-/// It's possible to pass the same functions to [Exporter::add_postprocessor] and
-/// [Exporter::add_embed_postprocessor]. The [Context::note_depth] method may be used to determine
+/// It's possible to pass the same functions to [`Exporter::add_postprocessor`] and
+/// [`Exporter::add_embed_postprocessor`]. The [`Context::note_depth`] method may be used to determine
 /// whether a note is a root note or an embedded note in this situation.
 ///
 /// # Examples
@@ -104,7 +104,7 @@ pub type MarkdownEvents<'a> = Vec<Event<'a>>;
 ///
 /// ## Change note contents
 ///
-/// In this example a note's markdown content is changed by iterating over the [MarkdownEvents] and
+/// In this example a note's markdown content is changed by iterating over the [`MarkdownEvents`] and
 /// changing the text when we encounter a [text element][Event::Text].
 ///
 /// Instead of using a closure like above, this example shows how to use a separate function
@@ -132,9 +132,8 @@ pub type MarkdownEvents<'a> = Vec<Event<'a>>;
 /// exporter.add_postprocessor(&foo_to_bar);
 /// # exporter.run().unwrap();
 /// ```
-
 pub type Postprocessor<'f> =
-    dyn Fn(&mut Context, &mut MarkdownEvents) -> PostprocessorResult + Send + Sync + 'f;
+    dyn Fn(&mut Context, &mut MarkdownEvents<'_>) -> PostprocessorResult + Send + Sync + 'f;
 type Result<T, E = ExportError> = std::result::Result<T, E>;
 
 const PERCENTENCODE_CHARS: &AsciiSet = &CONTROLS.add(b' ').add(b'(').add(b')').add(b'%').add(b'?');
@@ -142,7 +141,7 @@ const NOTE_RECURSION_LIMIT: usize = 10;
 
 #[non_exhaustive]
 #[derive(Debug, Snafu)]
-/// ExportError represents all errors which may be returned when using this crate.
+/// `ExportError` represents all errors which may be returned when using this crate.
 pub enum ExportError {
     #[snafu(display("failed to read from '{}'", path.display()))]
     /// This occurs when a read IO operation fails.
@@ -205,8 +204,9 @@ pub enum ExportError {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// Emitted by [Postprocessor]s to signal the next action to take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PostprocessorResult {
     /// Continue with the next post-processor (if any).
     Continue,
@@ -236,7 +236,7 @@ pub struct Exporter<'a> {
 }
 
 impl<'a> fmt::Debug for Exporter<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("WalkOptions")
             .field("root", &self.root)
             .field("destination", &self.destination)
@@ -265,8 +265,9 @@ impl<'a> fmt::Debug for Exporter<'a> {
 impl<'a> Exporter<'a> {
     /// Create a new exporter which reads notes from `root` and exports these to
     /// `destination`.
-    pub fn new(root: PathBuf, destination: PathBuf) -> Exporter<'a> {
-        Exporter {
+    #[must_use]
+    pub fn new(root: PathBuf, destination: PathBuf) -> Self {
+        Self {
             start_at: root.clone(),
             root,
             destination,
@@ -283,19 +284,19 @@ impl<'a> Exporter<'a> {
     ///
     /// Normally all notes under `root` (except for notes excluded by ignore rules) will be exported.
     /// When `start_at` is set, only notes under this path will be exported to the target destination.
-    pub fn start_at(&mut self, start_at: PathBuf) -> &mut Exporter<'a> {
+    pub fn start_at(&mut self, start_at: PathBuf) -> &mut Self {
         self.start_at = start_at;
         self
     }
 
     /// Set the [`WalkOptions`] to be used for this exporter.
-    pub fn walk_options(&mut self, options: WalkOptions<'a>) -> &mut Exporter<'a> {
+    pub fn walk_options(&mut self, options: WalkOptions<'a>) -> &mut Self {
         self.walk_options = options;
         self
     }
 
     /// Set the [`FrontmatterStrategy`] to be used for this exporter.
-    pub fn frontmatter_strategy(&mut self, strategy: FrontmatterStrategy) -> &mut Exporter<'a> {
+    pub fn frontmatter_strategy(&mut self, strategy: FrontmatterStrategy) -> &mut Self {
         self.frontmatter_strategy = strategy;
         self
     }
@@ -304,23 +305,23 @@ impl<'a> Exporter<'a> {
     ///
     /// When `recursive` is true (the default), emdeds are always processed recursively. This may
     /// lead to infinite recursion when note A embeds B, but B also embeds A.
-    /// (When this happens, [ExportError::RecursionLimitExceeded] will be returned by [Exporter::run]).
+    /// (When this happens, [`ExportError::RecursionLimitExceeded`] will be returned by [`Exporter::run`]).
     ///
     /// When `recursive` is false, if a note is encountered for a second time while processing the
     /// original note, instead of embedding it again a link to the note is inserted instead.
-    pub fn process_embeds_recursively(&mut self, recursive: bool) -> &mut Exporter<'a> {
+    pub fn process_embeds_recursively(&mut self, recursive: bool) -> &mut Self {
         self.process_embeds_recursively = recursive;
         self
     }
 
     /// Append a function to the chain of [postprocessors][Postprocessor] to run on exported Obsidian Markdown notes.
-    pub fn add_postprocessor(&mut self, processor: &'a Postprocessor) -> &mut Exporter<'a> {
+    pub fn add_postprocessor(&mut self, processor: &'a Postprocessor<'_>) -> &mut Self {
         self.postprocessors.push(processor);
         self
     }
 
     /// Append a function to the chain of [postprocessors][Postprocessor] for embeds.
-    pub fn add_embed_postprocessor(&mut self, processor: &'a Postprocessor) -> &mut Exporter<'a> {
+    pub fn add_embed_postprocessor(&mut self, processor: &'a Postprocessor<'_>) -> &mut Self {
         self.embed_postprocessors.push(processor);
         self
     }
@@ -408,27 +409,32 @@ impl<'a> Exporter<'a> {
             }
         }
 
-        let dest = context.destination;
-        let mut outfile = create_file(&dest)?;
+        let mut outfile = create_file(&context.destination)?;
         let write_frontmatter = match self.frontmatter_strategy {
             FrontmatterStrategy::Always => true,
             FrontmatterStrategy::Never => false,
             FrontmatterStrategy::Auto => !context.frontmatter.is_empty(),
         };
         if write_frontmatter {
-            let mut frontmatter_str = frontmatter_to_str(context.frontmatter)
+            let mut frontmatter_str = frontmatter_to_str(&context.frontmatter)
                 .context(FrontMatterEncodeSnafu { path: src })?;
             frontmatter_str.push('\n');
             outfile
                 .write_all(frontmatter_str.as_bytes())
-                .context(WriteSnafu { path: &dest })?;
+                .context(WriteSnafu {
+                    path: &context.destination,
+                })?;
         }
         outfile
-            .write_all(render_mdevents_to_mdtext(markdown_events).as_bytes())
-            .context(WriteSnafu { path: &dest })?;
+            .write_all(render_mdevents_to_mdtext(&markdown_events).as_bytes())
+            .context(WriteSnafu {
+                path: &context.destination,
+            })?;
         Ok(())
     }
 
+    #[allow(clippy::too_many_lines)]
+    #[allow(clippy::panic_in_result_fn)]
     fn parse_obsidian_note<'b>(
         &self,
         path: &Path,
@@ -441,7 +447,7 @@ impl<'a> Exporter<'a> {
         }
         let content = fs::read_to_string(path).context(ReadSnafu { path })?;
         let (frontmatter, content) =
-            matter::matter(&content).unwrap_or(("".to_string(), content.to_string()));
+            matter::matter(&content).unwrap_or((String::new(), content.clone()));
         let frontmatter =
             frontmatter_from_str(&frontmatter).context(FrontMatterDecodeSnafu { path })?;
 
@@ -616,7 +622,7 @@ impl<'a> Exporter<'a> {
                 }
                 events
             }
-            Some("png") | Some("jpg") | Some("jpeg") | Some("gif") | Some("webp") | Some("svg") => {
+            Some("png" | "jpg" | "jpeg" | "gif" | "webp" | "svg") => {
                 self.make_link_to_file(note_ref, &child_context)
                     .into_iter()
                     .map(|event| match event {
@@ -652,10 +658,10 @@ impl<'a> Exporter<'a> {
         reference: ObsidianNoteReference<'_>,
         context: &Context,
     ) -> MarkdownEvents<'c> {
-        let target_file = reference
-            .file
-            .map(|file| lookup_filename_in_vault(file, self.vault_contents.as_ref().unwrap()))
-            .unwrap_or_else(|| Some(context.current_file()));
+        let target_file = reference.file.map_or_else(
+            || Some(context.current_file()),
+            |file| lookup_filename_in_vault(file, self.vault_contents.as_ref().unwrap()),
+        );
 
         if target_file.is_none() {
             // TODO: Extract into configurable function.
@@ -693,7 +699,7 @@ impl<'a> Exporter<'a> {
             link.push_str(&slugify(section));
         }
 
-        let link_tag = pulldown_cmark::Tag::Link(
+        let link_tag = Tag::Link(
             pulldown_cmark::LinkType::Inline,
             CowStr::from(link),
             CowStr::from(""),
@@ -707,13 +713,13 @@ impl<'a> Exporter<'a> {
     }
 }
 
-/// Get the full path for the given filename when it's contained in vault_contents, taking into
+/// Get the full path for the given filename when it's contained in `vault_contents`, taking into
 /// account:
 ///
 /// 1. Standard Obsidian note references not including a .md extension.
 /// 2. Case-insensitive matching
 /// 3. Unicode normalization rules using normalization form C
-///    (https://www.w3.org/TR/charmod-norm/#unicodeNormalization)
+///    (<https://www.w3.org/TR/charmod-norm/#unicodeNormalization>)
 fn lookup_filename_in_vault<'a>(
     filename: &str,
     vault_contents: &'a [PathBuf],
@@ -737,7 +743,7 @@ fn lookup_filename_in_vault<'a>(
     })
 }
 
-fn render_mdevents_to_mdtext(markdown: MarkdownEvents) -> String {
+fn render_mdevents_to_mdtext(markdown: &MarkdownEvents<'_>) -> String {
     let mut buffer = String::new();
     cmark_with_options(
         markdown.iter(),
@@ -754,7 +760,7 @@ fn create_file(dest: &Path) -> Result<File> {
         .or_else(|err| {
             if err.kind() == ErrorKind::NotFound {
                 let parent = dest.parent().expect("file should have a parent directory");
-                std::fs::create_dir_all(parent)?
+                fs::create_dir_all(parent)?;
             }
             File::create(dest)
         })
@@ -763,13 +769,13 @@ fn create_file(dest: &Path) -> Result<File> {
 }
 
 fn copy_file(src: &Path, dest: &Path) -> Result<()> {
-    std::fs::copy(src, dest)
+    fs::copy(src, dest)
         .or_else(|err| {
             if err.kind() == ErrorKind::NotFound {
                 let parent = dest.parent().expect("file should have a parent directory");
-                std::fs::create_dir_all(parent)?
+                fs::create_dir_all(parent)?;
             }
-            std::fs::copy(src, dest)
+            fs::copy(src, dest)
         })
         .context(WriteSnafu { path: dest })?;
     Ok(())
@@ -791,7 +797,7 @@ fn reduce_to_section<'a>(events: MarkdownEvents<'a>, section: &str) -> MarkdownE
     let mut last_level = HeadingLevel::H1;
     let mut last_tag_was_heading = false;
 
-    for event in events.into_iter() {
+    for event in events {
         filtered_events.push(event.clone());
         match event {
             // FIXME: This should propagate fragment_identifier and classes.
@@ -831,7 +837,7 @@ fn reduce_to_section<'a>(events: MarkdownEvents<'a>, section: &str) -> MarkdownE
     filtered_events
 }
 
-fn event_to_owned<'a>(event: Event) -> Event<'a> {
+fn event_to_owned<'a>(event: Event<'_>) -> Event<'a> {
     match event {
         Event::Start(tag) => Event::Start(tag_to_owned(tag)),
         Event::End(tag) => Event::End(tag_to_owned(tag)),
@@ -848,7 +854,7 @@ fn event_to_owned<'a>(event: Event) -> Event<'a> {
     }
 }
 
-fn tag_to_owned<'a>(tag: Tag) -> Tag<'a> {
+fn tag_to_owned<'a>(tag: Tag<'_>) -> Tag<'a> {
     match tag {
         Tag::Paragraph => Tag::Paragraph,
         Tag::Heading(level, _fragment_identifier, _classes) => {
@@ -882,7 +888,7 @@ fn tag_to_owned<'a>(tag: Tag) -> Tag<'a> {
     }
 }
 
-fn codeblock_kind_to_owned<'a>(codeblock_kind: CodeBlockKind) -> CodeBlockKind<'a> {
+fn codeblock_kind_to_owned<'a>(codeblock_kind: CodeBlockKind<'_>) -> CodeBlockKind<'a> {
     match codeblock_kind {
         CodeBlockKind::Indented => CodeBlockKind::Indented,
         CodeBlockKind::Fenced(cowstr) => CodeBlockKind::Fenced(CowStr::from(cowstr.into_string())),
@@ -896,7 +902,7 @@ mod tests {
     use rstest::rstest;
 
     lazy_static! {
-        static ref VAULT: Vec<std::path::PathBuf> = vec![
+        static ref VAULT: Vec<PathBuf> = vec![
             PathBuf::from("NoteA.md"),
             PathBuf::from("Document.pdf"),
             PathBuf::from("Note.1.md"),
@@ -956,9 +962,9 @@ mod tests {
     #[case("Note\u{41}\u{308}", "Note\u{E4}.md")]
     fn test_lookup_filename_in_vault(#[case] input: &str, #[case] expected: &str) {
         let result = lookup_filename_in_vault(input, &VAULT);
-        println!("Test input: {:?}", input);
-        println!("Expecting: {:?}", expected);
+        println!("Test input: {input:?}");
+        println!("Expecting: {expected:?}");
         println!("Got: {:?}", result.unwrap_or(&PathBuf::from("")));
-        assert_eq!(result, Some(&PathBuf::from(expected)))
+        assert_eq!(result, Some(&PathBuf::from(expected)));
     }
 }

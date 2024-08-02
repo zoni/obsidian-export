@@ -76,3 +76,81 @@ windows-archive = ".zip"
 pr-run-mode = "plan"
 # Publish jobs to run in CI
 publish-jobs = ["./publish-crate"]
+
+[lints.rust]
+nonstandard_style = { level = "warn", priority = -1 }
+rust_2018_idioms = { level = "warn", priority = -1 }
+rust_2024_compatibility = { level = "warn", priority = -1 }
+
+noop_method_call = "warn"
+redundant-lifetimes = "warn"
+unsafe_op_in_unsafe_fn = "warn"
+unused_qualifications = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+
+# Should probably change these back to warn in the future, but it's a
+# low-priority issue for me at the moment.
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+
+# These lints from the pedantic group are actually too pedantic for my taste:
+match_bool = "allow"
+similar_names = "allow"
+string-add = "allow"
+
+# Enable select lints from the 'restriction' group (which is not meant to be
+# enabled as a whole)
+arithmetic_side_effects = "warn"
+as_conversions = "warn"
+assertions_on_result_states = "warn"
+clone_on_ref_ptr = "warn"
+dbg_macro = "warn"
+default_numeric_fallback = "warn"
+else_if_without_else = "warn"
+empty_enum_variants_with_brackets = "warn"
+error_impl_error = "warn"
+exhaustive_enums = "warn"
+exhaustive_structs = "warn"
+filetype_is_file = "warn"
+float_cmp_const = "warn"
+fn_to_numeric_cast_any = "warn"
+if_then_some_else_none = "warn"
+impl_trait_in_params = "warn"
+indexing_slicing = "warn"
+infinite_loop = "warn"
+integer_division = "warn"
+large_include_file = "warn"
+lossy_float_literal = "warn"
+map_err_ignore = "warn"
+mem_forget = "warn"
+multiple_inherent_impl = "warn"
+multiple_unsafe_ops_per_block = "warn"
+panic_in_result_fn = "warn"
+rc_buffer = "warn"
+rc_mutex = "warn"
+redundant_type_annotations = "warn"
+same_name_method = "warn"
+self_named_module_files = "warn"
+shadow_unrelated = "warn"
+str_to_string = "warn"
+string_add = "warn"
+string_slice = "warn"
+string_to_string = "warn"
+suspicious_xor_used_as_pow = "warn"
+todo = "warn"
+try_err = "warn"
+undocumented_unsafe_blocks = "warn"
+unneeded_field_pattern = "warn"
+unseparated_literal_suffix = "warn"
+vec_init_then_push = "warn"
+#expect_used = "warn"
+#missing_docs_in_private_items = "warn"
+#missing_inline_in_public_items = "warn"
+#pathbuf_init_then_push = "warn"  # Rust 1.81.0+
+#renamed_function_params = "warn" # Rust 1.80.0+
+#unwrap_in_result = "warn"
+#unwrap_used = "warn"
+#wildcard_enum_match_arm = "warn"

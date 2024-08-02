@@ -1,12 +1,13 @@
 use eyre::{eyre, Result};
 use gumdrop::Options;
-use obsidian_export::{postprocessors::*, ExportError};
-use obsidian_export::{Exporter, FrontmatterStrategy, WalkOptions};
+use obsidian_export::postprocessors::{filter_by_tags, softbreaks_to_hardbreaks};
+use obsidian_export::{ExportError, Exporter, FrontmatterStrategy, WalkOptions};
 use std::{env, path::PathBuf};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Options)]
+#[allow(clippy::struct_excessive_bools)]
 struct Opts {
     #[options(help = "Display program help")]
     help: bool,
@@ -76,7 +77,7 @@ fn main() {
     // version flag was specified. Without this, "missing required free argument" would get printed
     // when no other args are specified.
     if env::args().any(|arg| arg == "-v" || arg == "--version") {
-        println!("obsidian-export {}", VERSION);
+        println!("obsidian-export {VERSION}");
         std::process::exit(0);
     }
 
@@ -107,6 +108,9 @@ fn main() {
         exporter.start_at(path);
     }
 
+    #[allow(clippy::pattern_type_mismatch)]
+    #[allow(clippy::ref_patterns)]
+    #[allow(clippy::shadow_unrelated)]
     if let Err(err) = exporter.run() {
         match err {
             ExportError::FileExportError {
@@ -128,7 +132,7 @@ fn main() {
                     for (idx, path) in file_tree.iter().enumerate() {
                         eprintln!("  {}-> {}", "  ".repeat(idx), path.display());
                     }
-                    eprintln!("\nHint: Ensure notes are non-recursive, or specify --no-recursive-embeds to break cycles")
+                    eprintln!("\nHint: Ensure notes are non-recursive, or specify --no-recursive-embeds to break cycles");
                 }
                 _ => eprintln!("Error: {:?}", eyre!(err)),
             },
