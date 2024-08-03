@@ -1,5 +1,4 @@
-pub use pulldown_cmark;
-pub use serde_yaml;
+pub use {pulldown_cmark, serde_yaml};
 
 #[macro_use]
 extern crate lazy_static;
@@ -10,11 +9,16 @@ pub mod postprocessors;
 mod references;
 mod walker;
 
-pub use context::Context;
-pub use frontmatter::{Frontmatter, FrontmatterStrategy};
-pub use walker::{vault_contents, WalkOptions};
+use std::ffi::OsString;
+use std::fs::{self, File};
+use std::io::prelude::*;
+use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
+use std::{fmt, str};
 
+pub use context::Context;
 use frontmatter::{frontmatter_from_str, frontmatter_to_str};
+pub use frontmatter::{Frontmatter, FrontmatterStrategy};
 use pathdiff::diff_paths;
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use pulldown_cmark::{CodeBlockKind, CowStr, Event, HeadingLevel, Options, Parser, Tag};
@@ -23,14 +27,8 @@ use rayon::prelude::*;
 use references::{ObsidianNoteReference, RefParser, RefParserState, RefType};
 use slug::slugify;
 use snafu::{ResultExt, Snafu};
-use std::ffi::OsString;
-use std::fmt;
-use std::fs::{self, File};
-use std::io::prelude::*;
-use std::io::ErrorKind;
-use std::path::{Path, PathBuf};
-use std::str;
 use unicode_normalization::UnicodeNormalization;
+pub use walker::{vault_contents, WalkOptions};
 
 /// A series of markdown [Event]s that are generated while traversing an Obsidian markdown note.
 pub type MarkdownEvents<'a> = Vec<Event<'a>>;
@@ -38,11 +36,12 @@ pub type MarkdownEvents<'a> = Vec<Event<'a>>;
 /// A post-processing function that is to be called after an Obsidian note has been fully parsed and
 /// converted to regular markdown syntax.
 ///
-/// Postprocessors are called in the order they've been added through [`Exporter::add_postprocessor`]
-/// just before notes are written out to their final destination.
+/// Postprocessors are called in the order they've been added through
+/// [`Exporter::add_postprocessor`] just before notes are written out to their final destination.
 /// They may be used to achieve the following:
 ///
-/// 1. Modify a note's [Context], for example to change the destination filename or update its [Frontmatter] (see [`Context::frontmatter`]).
+/// 1. Modify a note's [Context], for example to change the destination filename or update its
+///    [Frontmatter] (see [`Context::frontmatter`]).
 /// 2. Change a note's contents by altering [`MarkdownEvents`].
 /// 3. Prevent later postprocessors from running ([`PostprocessorResult::StopHere`]) or cause a note
 ///    to be skipped entirely ([`PostprocessorResult::StopAndSkipNote`]).
@@ -64,8 +63,8 @@ pub type MarkdownEvents<'a> = Vec<Event<'a>>;
 ///   replaced with a blank document) but doesn't affect the root note.
 ///
 /// It's possible to pass the same functions to [`Exporter::add_postprocessor`] and
-/// [`Exporter::add_embed_postprocessor`]. The [`Context::note_depth`] method may be used to determine
-/// whether a note is a root note or an embedded note in this situation.
+/// [`Exporter::add_embed_postprocessor`]. The [`Context::note_depth`] method may be used to
+/// determine whether a note is a root note or an embedded note in this situation.
 ///
 /// # Examples
 ///
@@ -104,8 +103,8 @@ pub type MarkdownEvents<'a> = Vec<Event<'a>>;
 ///
 /// ## Change note contents
 ///
-/// In this example a note's markdown content is changed by iterating over the [`MarkdownEvents`] and
-/// changing the text when we encounter a [text element][Event::Text].
+/// In this example a note's markdown content is changed by iterating over the [`MarkdownEvents`]
+/// and changing the text when we encounter a [text element][Event::Text].
 ///
 /// Instead of using a closure like above, this example shows how to use a separate function
 /// definition.
@@ -282,8 +281,9 @@ impl<'a> Exporter<'a> {
 
     /// Set a custom starting point for the export.
     ///
-    /// Normally all notes under `root` (except for notes excluded by ignore rules) will be exported.
-    /// When `start_at` is set, only notes under this path will be exported to the target destination.
+    /// Normally all notes under `root` (except for notes excluded by ignore rules) will be
+    /// exported. When `start_at` is set, only notes under this path will be exported to the
+    /// target destination.
     pub fn start_at(&mut self, start_at: PathBuf) -> &mut Self {
         self.start_at = start_at;
         self
@@ -305,7 +305,8 @@ impl<'a> Exporter<'a> {
     ///
     /// When `recursive` is true (the default), emdeds are always processed recursively. This may
     /// lead to infinite recursion when note A embeds B, but B also embeds A.
-    /// (When this happens, [`ExportError::RecursionLimitExceeded`] will be returned by [`Exporter::run`]).
+    /// (When this happens, [`ExportError::RecursionLimitExceeded`] will be returned by
+    /// [`Exporter::run`]).
     ///
     /// When `recursive` is false, if a note is encountered for a second time while processing the
     /// original note, instead of embedding it again a link to the note is inserted instead.
@@ -314,7 +315,8 @@ impl<'a> Exporter<'a> {
         self
     }
 
-    /// Append a function to the chain of [postprocessors][Postprocessor] to run on exported Obsidian Markdown notes.
+    /// Append a function to the chain of [postprocessors][Postprocessor] to run on exported
+    /// Obsidian Markdown notes.
     pub fn add_postprocessor(&mut self, processor: &'a Postprocessor<'_>) -> &mut Self {
         self.postprocessors.push(processor);
         self
@@ -718,8 +720,7 @@ impl<'a> Exporter<'a> {
 ///
 /// 1. Standard Obsidian note references not including a .md extension.
 /// 2. Case-insensitive matching
-/// 3. Unicode normalization rules using normalization form C
-///    (<https://www.w3.org/TR/charmod-norm/#unicodeNormalization>)
+/// 3. Unicode normalization rules using normalization form C (<https://www.w3.org/TR/charmod-norm/#unicodeNormalization>)
 fn lookup_filename_in_vault<'a>(
     filename: &str,
     vault_contents: &'a [PathBuf],
@@ -897,9 +898,10 @@ fn codeblock_kind_to_owned<'a>(codeblock_kind: CodeBlockKind<'_>) -> CodeBlockKi
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use pretty_assertions::assert_eq;
     use rstest::rstest;
+
+    use super::*;
 
     lazy_static! {
         static ref VAULT: Vec<PathBuf> = vec![

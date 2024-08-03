@@ -1,5 +1,6 @@
-use crate::Frontmatter;
 use std::path::{Path, PathBuf};
+
+use crate::Frontmatter;
 
 #[derive(Debug, Clone)]
 /// Context holds metadata about a note which is being parsed.
@@ -36,10 +37,9 @@ pub struct Context {
     /// # let mut context = Context::new(PathBuf::from("source"), PathBuf::from("destination"));
     /// let key = Value::String("foo".to_string());
     ///
-    /// context.frontmatter.insert(
-    ///     key.clone(),
-    ///     Value::String("bar".to_string()),
-    /// );
+    /// context
+    ///     .frontmatter
+    ///     .insert(key.clone(), Value::String("bar".to_string()));
     /// ```
     pub frontmatter: Frontmatter,
 }

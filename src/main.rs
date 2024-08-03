@@ -1,8 +1,10 @@
+use std::env;
+use std::path::PathBuf;
+
 use eyre::{eyre, Result};
 use gumdrop::Options;
 use obsidian_export::postprocessors::{filter_by_tags, softbreaks_to_hardbreaks};
 use obsidian_export::{ExportError, Exporter, FrontmatterStrategy, WalkOptions};
-use std::{env, path::PathBuf};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 

@@ -1,8 +1,10 @@
-use crate::{ExportError, WalkDirSnafu};
-use ignore::{DirEntry, Walk, WalkBuilder};
-use snafu::ResultExt;
 use std::fmt;
 use std::path::{Path, PathBuf};
+
+use ignore::{DirEntry, Walk, WalkBuilder};
+use snafu::ResultExt;
+
+use crate::{ExportError, WalkDirSnafu};
 
 type Result<T, E = ExportError> = std::result::Result<T, E>;
 type FilterFn = dyn Fn(&DirEntry) -> bool + Send + Sync + 'static;

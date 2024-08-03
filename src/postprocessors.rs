@@ -1,8 +1,9 @@
 //! A collection of officially maintained [postprocessors][crate::Postprocessor].
 
-use super::{Context, MarkdownEvents, PostprocessorResult};
 use pulldown_cmark::Event;
 use serde_yaml::Value;
+
+use super::{Context, MarkdownEvents, PostprocessorResult};
 
 /// This postprocessor converts all soft line breaks to hard line breaks. Enabling this mimics
 /// Obsidian's _'Strict line breaks'_ setting.

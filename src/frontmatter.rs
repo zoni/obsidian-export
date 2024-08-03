@@ -2,8 +2,8 @@ use serde_yaml::Result;
 
 /// YAML front matter from an Obsidian note.
 ///
-/// This is essentially an alias of [`serde_yaml::Mapping`] so all the methods available on that type
-/// are available with `Frontmatter` as well.
+/// This is essentially an alias of [`serde_yaml::Mapping`] so all the methods available on that
+/// type are available with `Frontmatter` as well.
 ///
 /// # Examples
 ///
@@ -14,10 +14,7 @@ use serde_yaml::Result;
 /// let mut frontmatter = Frontmatter::new();
 /// let key = Value::String("foo".to_string());
 ///
-/// frontmatter.insert(
-///     key.clone(),
-///     Value::String("bar".to_string()),
-/// );
+/// frontmatter.insert(key.clone(), Value::String("bar".to_string()));
 ///
 /// assert_eq!(
 ///     frontmatter.get(&key),
@@ -67,9 +64,10 @@ pub enum FrontmatterStrategy {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use pretty_assertions::assert_eq;
     use serde_yaml::Value;
+
+    use super::*;
 
     #[test]
     fn empty_string_should_yield_empty_frontmatter() {

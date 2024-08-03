@@ -1,5 +1,6 @@
-use regex::Regex;
 use std::fmt;
+
+use regex::Regex;
 
 lazy_static! {
     static ref OBSIDIAN_NOTE_LINK_RE: Regex =

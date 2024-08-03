@@ -1,15 +1,15 @@
 #![allow(clippy::shadow_unrelated)]
 
-use obsidian_export::{ExportError, Exporter, FrontmatterStrategy};
-use pretty_assertions::assert_eq;
 use std::fs::{create_dir, read_to_string, set_permissions, File, Permissions};
 use std::io::prelude::*;
-use std::path::PathBuf;
-use tempfile::TempDir;
-use walkdir::WalkDir;
-
 #[cfg(not(target_os = "windows"))]
 use std::os::unix::fs::PermissionsExt;
+use std::path::PathBuf;
+
+use obsidian_export::{ExportError, Exporter, FrontmatterStrategy};
+use pretty_assertions::assert_eq;
+use tempfile::TempDir;
+use walkdir::WalkDir;
 
 #[test]
 fn test_main_variants_with_default_options() {
@@ -262,9 +262,9 @@ fn test_not_existing_destination_with_source_dir() {
 }
 
 #[test]
-// This test ensures that when source is a file, but destination points to a regular file
-// inside of a non-existent directory, an error is raised instead of that directory path being
-// created (like `mkdir -p`)
+// This test ensures that when source is a file, but destination points to a
+// regular file inside of a non-existent directory, an error is raised instead
+// of that directory path being created (like `mkdir -p`)
 fn test_not_existing_destination_with_source_file() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
 

@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         job:
-          - cargo fmt --all -- --check
+          - rustup toolchain install nightly --profile minimal --component rustfmt && cargo +nightly fmt --all -- --check
           - cargo test --all-targets --all-features
           - cargo clippy --all-targets --all-features -- -D warning
       fail-fast: false
@@ -54,7 +54,7 @@ jobs:
     needs: populate-rust-cache
     env:
       # These hooks are expensive and already run as dedicated jobs above
-      SKIP: "tests,clippy"
+      SKIP: "rustfmt,tests,clippy"
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
