@@ -54,8 +54,8 @@ fn filter_by_tags_(
 #[test]
 fn test_filter_tags() {
     let tags = vec![
-        Value::String("skip".to_string()),
-        Value::String("publish".to_string()),
+        Value::String("skip".into()),
+        Value::String("publish".into()),
     ];
     let empty_tags = vec![];
     assert_eq!(
@@ -69,37 +69,37 @@ fn test_filter_tags() {
         "When no exclusion & inclusion are specified, files with tags are included"
     );
     assert_eq!(
-        filter_by_tags_(&tags, &["exclude".to_string()], &[]),
+        filter_by_tags_(&tags, &["exclude".into()], &[]),
         PostprocessorResult::Continue,
         "When exclusion tags don't match files with tags are included"
     );
     assert_eq!(
-        filter_by_tags_(&empty_tags, &["exclude".to_string()], &[]),
+        filter_by_tags_(&empty_tags, &["exclude".into()], &[]),
         PostprocessorResult::Continue,
         "When exclusion tags don't match files without tags are included"
     );
     assert_eq!(
-        filter_by_tags_(&tags, &[], &["publish".to_string()]),
+        filter_by_tags_(&tags, &[], &["publish".into()]),
         PostprocessorResult::Continue,
         "When exclusion tags don't match files with tags are included"
     );
     assert_eq!(
-        filter_by_tags_(&empty_tags, &[], &["include".to_string()]),
+        filter_by_tags_(&empty_tags, &[], &["include".into()]),
         PostprocessorResult::StopAndSkipNote,
         "When inclusion tags are specified files without tags are excluded"
     );
     assert_eq!(
-        filter_by_tags_(&tags, &[], &["include".to_string()]),
+        filter_by_tags_(&tags, &[], &["include".into()]),
         PostprocessorResult::StopAndSkipNote,
         "When exclusion tags don't match files with tags are exluded"
     );
     assert_eq!(
-        filter_by_tags_(&tags, &["skip".to_string()], &["skip".to_string()]),
+        filter_by_tags_(&tags, &["skip".into()], &["skip".into()]),
         PostprocessorResult::StopAndSkipNote,
         "When both inclusion and exclusion tags are the same exclusion wins"
     );
     assert_eq!(
-        filter_by_tags_(&tags, &["skip".to_string()], &["publish".to_string()]),
+        filter_by_tags_(&tags, &["skip".into()], &["publish".into()]),
         PostprocessorResult::StopAndSkipNote,
         "When both inclusion and exclusion tags match exclusion wins"
     );

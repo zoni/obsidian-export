@@ -20,13 +20,13 @@ repos:
         files: \.rs$
       - id: tests
         name: Run tests
-        entry: cargo test
+        entry: cargo test --all-targets --all-features
         language: system
         files: \.rs$
         pass_filenames: false
       - id: clippy
         name: Check clippy lints
-        entry: cargo clippy -- -D warnings
+        entry: cargo clippy --all-targets --all-features -- -D warnings
         language: system
         files: \.rs$
         pass_filenames: false

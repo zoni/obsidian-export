@@ -1,3 +1,5 @@
+#![allow(clippy::shadow_unrelated)]
+
 use obsidian_export::{ExportError, Exporter, FrontmatterStrategy};
 use pretty_assertions::assert_eq;
 use std::fs::{create_dir, read_to_string, set_permissions, File, Permissions};
@@ -237,7 +239,7 @@ fn test_not_existing_source() {
     .unwrap_err();
 
     match err {
-        ExportError::PathDoesNotExist { path: _ } => {}
+        ExportError::PathDoesNotExist { .. } => {}
         _ => panic!("Wrong error variant: {:?}", err),
     }
 }
@@ -254,7 +256,7 @@ fn test_not_existing_destination_with_source_dir() {
     .unwrap_err();
 
     match err {
-        ExportError::PathDoesNotExist { path: _ } => {}
+        ExportError::PathDoesNotExist { .. } => {}
         _ => panic!("Wrong error variant: {:?}", err),
     }
 }
@@ -274,7 +276,7 @@ fn test_not_existing_destination_with_source_file() {
     .unwrap_err();
 
     match err {
-        ExportError::PathDoesNotExist { path: _ } => {}
+        ExportError::PathDoesNotExist { .. } => {}
         _ => panic!("Wrong error variant: {:?}", err),
     }
 }
@@ -287,12 +289,12 @@ fn test_source_no_permissions() {
     let dest = tmp_dir.path().to_path_buf().join("dest.md");
 
     let mut file = File::create(&src).unwrap();
-    file.write_all("Foo".as_bytes()).unwrap();
+    file.write_all(b"Foo").unwrap();
     set_permissions(&src, Permissions::from_mode(0o000)).unwrap();
 
     match Exporter::new(src, dest).run().unwrap_err() {
-        ExportError::FileExportError { path: _, source } => match *source {
-            ExportError::ReadError { path: _, source: _ } => {}
+        ExportError::FileExportError { source, .. } => match *source {
+            ExportError::ReadError { .. } => {}
             _ => panic!("Wrong error variant for source, got: {:?}", source),
         },
         err => panic!("Wrong error variant: {:?}", err),
@@ -307,14 +309,14 @@ fn test_dest_no_permissions() {
     let dest = tmp_dir.path().to_path_buf().join("dest");
 
     let mut file = File::create(&src).unwrap();
-    file.write_all("Foo".as_bytes()).unwrap();
+    file.write_all(b"Foo").unwrap();
 
     create_dir(&dest).unwrap();
     set_permissions(&dest, Permissions::from_mode(0o555)).unwrap();
 
     match Exporter::new(src, dest).run().unwrap_err() {
-        ExportError::FileExportError { path: _, source } => match *source {
-            ExportError::WriteError { path: _, source: _ } => {}
+        ExportError::FileExportError { source, .. } => match *source {
+            ExportError::WriteError { .. } => {}
             _ => panic!("Wrong error variant for source, got: {:?}", source),
         },
         err => panic!("Wrong error variant: {:?}", err),
@@ -333,7 +335,7 @@ fn test_infinite_recursion() {
     .unwrap_err();
 
     match err {
-        ExportError::FileExportError { path: _, source } => match *source {
+        ExportError::FileExportError { source, .. } => match *source {
             ExportError::RecursionLimitExceeded { .. } => {}
             _ => panic!("Wrong error variant for source, got: {:?}", source),
         },

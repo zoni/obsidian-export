@@ -11,7 +11,7 @@ use tempfile::TempDir;
 use walkdir::WalkDir;
 
 /// This postprocessor replaces any instance of "foo" with "bar" in the note body.
-fn foo_to_bar(_ctx: &mut Context, events: &mut MarkdownEvents) -> PostprocessorResult {
+fn foo_to_bar(_ctx: &mut Context, events: &mut MarkdownEvents<'_>) -> PostprocessorResult {
     for event in events.iter_mut() {
         if let Event::Text(text) = event {
             *event = Event::Text(CowStr::from(text.replace("foo", "bar")));
@@ -21,11 +21,9 @@ fn foo_to_bar(_ctx: &mut Context, events: &mut MarkdownEvents) -> PostprocessorR
 }
 
 /// This postprocessor appends "bar: baz" to frontmatter.
-fn append_frontmatter(ctx: &mut Context, _events: &mut MarkdownEvents) -> PostprocessorResult {
-    ctx.frontmatter.insert(
-        Value::String("bar".to_string()),
-        Value::String("baz".to_string()),
-    );
+fn append_frontmatter(ctx: &mut Context, _events: &mut MarkdownEvents<'_>) -> PostprocessorResult {
+    ctx.frontmatter
+        .insert(Value::String("bar".into()), Value::String("baz".into()));
     PostprocessorResult::Continue
 }
 
@@ -113,6 +111,7 @@ fn test_postprocessor_change_destination() {
 //     error[E0597]: `parents` does not live long enough
 //     cast requires that `parents` is borrowed for `'static`
 #[test]
+#[allow(clippy::significant_drop_tightening)]
 fn test_postprocessor_stateful_callback() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
     let mut exporter = Exporter::new(
@@ -120,8 +119,8 @@ fn test_postprocessor_stateful_callback() {
         tmp_dir.path().to_path_buf(),
     );
 
-    let parents: Mutex<HashSet<PathBuf>> = Default::default();
-    let callback = |ctx: &mut Context, _mdevents: &mut MarkdownEvents| -> PostprocessorResult {
+    let parents: Mutex<HashSet<PathBuf>> = Mutex::default();
+    let callback = |ctx: &mut Context, _mdevents: &mut MarkdownEvents<'_>| -> PostprocessorResult {
         parents
             .lock()
             .unwrap()
@@ -187,6 +186,7 @@ fn test_embed_postprocessors_stop_and_skip() {
 // correct. Primarily, this means the frontmatter should reflect that of the note being embedded as
 // opposed to the frontmatter of the root note.
 #[test]
+#[allow(clippy::manual_assert)]
 fn test_embed_postprocessors_context() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
     let mut exporter = Exporter::new(
@@ -200,7 +200,7 @@ fn test_embed_postprocessors_context() {
         }
         let is_root_note = ctx
             .frontmatter
-            .get(&Value::String("is_root_note".to_string()))
+            .get(&Value::String("is_root_note".into()))
             .unwrap();
         if is_root_note != &Value::Bool(true) {
             // NOTE: Test failure may not give output consistently because the test binary affects
@@ -216,7 +216,7 @@ fn test_embed_postprocessors_context() {
     exporter.add_embed_postprocessor(&|ctx, _mdevents| {
         let is_root_note = ctx
             .frontmatter
-            .get(&Value::String("is_root_note".to_string()))
+            .get(&Value::String("is_root_note".into()))
             .unwrap();
         if is_root_note == &Value::Bool(true) {
             // NOTE: Test failure may not give output consistently because the test binary affects
@@ -257,8 +257,8 @@ fn test_filter_by_tags() {
         tmp_dir.path().to_path_buf(),
     );
     let filter_by_tags = filter_by_tags(
-        vec!["private".to_string(), "no-export".to_string()],
-        vec!["export".to_string()],
+        vec!["private".into(), "no-export".into()],
+        vec!["export".into()],
     );
     exporter.add_postprocessor(&filter_by_tags);
     exporter.run().unwrap();

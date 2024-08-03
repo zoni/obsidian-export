@@ -88,10 +88,7 @@ mod tests {
     #[test]
     fn nonempty_frontmatter_to_str() {
         let mut frontmatter = Frontmatter::new();
-        frontmatter.insert(
-            Value::String("foo".to_string()),
-            Value::String("bar".to_string()),
-        );
+        frontmatter.insert(Value::String("foo".into()), Value::String("bar".into()));
         assert_eq!(
             frontmatter_to_str(&frontmatter).unwrap(),
             format!("---\nfoo: bar\n---\n")

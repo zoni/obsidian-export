@@ -20,8 +20,8 @@ jobs:
       matrix:
         job:
           - cargo fmt --all -- --check
-          - cargo test
-          - cargo clippy -- -D warnings
+          - cargo test --all-targets --all-features
+          - cargo clippy --all-targets --all-features -- -D warning
       fail-fast: false
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4

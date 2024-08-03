@@ -912,6 +912,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unicode_not_nfc)]
     fn encodings() {
         // Standard "Latin Small Letter A with Diaeresis" (U+00E4)
         // Encoded in UTF-8 as two bytes: 0xC3 0xA4
