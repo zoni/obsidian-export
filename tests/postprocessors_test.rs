@@ -203,7 +203,7 @@ fn test_embed_postprocessors_context() {
         }
         let is_root_note = ctx
             .frontmatter
-            .get(&Value::String("is_root_note".into()))
+            .get(Value::String("is_root_note".into()))
             .unwrap();
         if is_root_note != &Value::Bool(true) {
             // NOTE: Test failure may not give output consistently because the test binary
@@ -220,7 +220,7 @@ fn test_embed_postprocessors_context() {
     exporter.add_embed_postprocessor(&|ctx, _mdevents| {
         let is_root_note = ctx
             .frontmatter
-            .get(&Value::String("is_root_note".into()))
+            .get(Value::String("is_root_note".into()))
             .unwrap();
         if is_root_note == &Value::Bool(true) {
             // NOTE: Test failure may not give output consistently because the test binary

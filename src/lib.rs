@@ -378,7 +378,7 @@ impl<'a> Exporter<'a> {
             .filter(|file| file.starts_with(&self.start_at))
             .try_for_each(|file| {
                 let relative_path = file
-                    .strip_prefix(&self.start_at.clone())
+                    .strip_prefix(self.start_at.clone())
                     .expect("file should always be nested under root")
                     .to_path_buf();
                 let destination = &self.destination.join(relative_path);
