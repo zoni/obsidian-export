@@ -483,11 +483,11 @@ impl<'a> Exporter<'a> {
         let frontmatter =
             frontmatter_from_str(&frontmatter).context(FrontMatterDecodeSnafu { path })?;
 
-        let mut parser_options = Options::empty();
-        parser_options.insert(Options::ENABLE_TABLES);
-        parser_options.insert(Options::ENABLE_FOOTNOTES);
-        parser_options.insert(Options::ENABLE_STRIKETHROUGH);
-        parser_options.insert(Options::ENABLE_TASKLISTS);
+        let parser_options = Options::ENABLE_TABLES
+            | Options::ENABLE_FOOTNOTES
+            | Options::ENABLE_STRIKETHROUGH
+            | Options::ENABLE_TASKLISTS
+            | Options::ENABLE_MATH;
 
         let mut ref_parser = RefParser::new();
         let mut events = vec![];
