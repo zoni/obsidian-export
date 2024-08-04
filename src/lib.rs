@@ -478,16 +478,14 @@ impl<'a> Exporter<'a> {
             });
         }
         let content = fs::read_to_string(path).context(ReadSnafu { path })?;
-        let (frontmatter, content) =
-            matter::matter(&content).unwrap_or((String::new(), content.clone()));
-        let frontmatter =
-            frontmatter_from_str(&frontmatter).context(FrontMatterDecodeSnafu { path })?;
+        let mut frontmatter = String::new();
 
         let parser_options = Options::ENABLE_TABLES
             | Options::ENABLE_FOOTNOTES
             | Options::ENABLE_STRIKETHROUGH
             | Options::ENABLE_TASKLISTS
-            | Options::ENABLE_MATH;
+            | Options::ENABLE_MATH
+            | Options::ENABLE_YAML_STYLE_METADATA_BLOCKS;
 
         let mut ref_parser = RefParser::new();
         let mut events = vec![];
@@ -504,6 +502,13 @@ impl<'a> Exporter<'a> {
             match ref_parser.state {
                 RefParserState::NoState => {
                     match event {
+                        Event::Start(Tag::MetadataBlock(kind)) => {
+                            debug_assert!(kind == pulldown_cmark::MetadataBlockKind::YamlStyle);
+                            ref_parser.transition(RefParserState::ParsingFrontMatter);
+                        }
+                        Event::End(TagEnd::MetadataBlock(_kind)) => {
+                            ref_parser.transition(RefParserState::ParsingFrontMatter);
+                        }
                         Event::Text(CowStr::Borrowed("![")) => {
                             ref_parser.ref_type = Some(RefType::Embed);
                             ref_parser.transition(RefParserState::ExpectSecondOpenBracket);
@@ -518,6 +523,21 @@ impl<'a> Exporter<'a> {
                         },
                     };
                 }
+                RefParserState::ParsingFrontMatter => match event {
+                    Event::End(TagEnd::MetadataBlock(_kind)) => {
+                        ref_parser.transition(RefParserState::NoState);
+                    }
+                    Event::Text(ref cowstr) => {
+                        frontmatter.push_str(cowstr);
+                    },
+                    _ => {
+                        panic!(
+                            "Encountered an unexpected event while processing frontmatter in {}. Please report this as a bug with a copy of the note contents and this text: \n\nEvent: {:?}\n",
+                            path.display(),
+                            event
+                        )
+                    }
+                },
                 RefParserState::ExpectSecondOpenBracket => match event {
                     Event::Text(CowStr::Borrowed("[")) => {
                         ref_parser.transition(RefParserState::ExpectRefText);
@@ -583,8 +603,9 @@ impl<'a> Exporter<'a> {
         if !buffer.is_empty() {
             events.append(&mut buffer);
         }
+
         Ok((
-            frontmatter,
+            frontmatter_from_str(&frontmatter).context(FrontMatterDecodeSnafu { path })?,
             events.into_iter().map(event_to_owned).collect(),
         ))
     }

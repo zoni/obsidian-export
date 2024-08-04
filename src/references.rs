@@ -23,6 +23,7 @@ pub struct ObsidianNoteReference<'a> {
 /// `RefParserState` enumerates all the possible parsing states [`RefParser`] may enter.
 pub enum RefParserState {
     NoState,
+    ParsingFrontMatter,
     ExpectSecondOpenBracket,
     ExpectRefText,
     ExpectRefTextOrCloseBracket,
