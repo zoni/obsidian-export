@@ -30,8 +30,3 @@ repos:
         language: system
         files: \.rs$
         pass_filenames: false
-      - id: README
-        name: Render README.md
-        entry: docs/generate.sh
-        language: script
-        files: ^(README\.md)|(docs/.*)

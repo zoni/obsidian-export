@@ -74,4 +74,9 @@ If you don't feel comfortable writing user documentation, I will be happy to gui
 
 > **⚠ Warning**
 >
-> If you update the README file, take note that you must edit the fragments in the [docs](docs/) directory as opposed to the README in the root of the repository, which is auto-generated.
+> If you update the README file, take note that you must edit the fragments in the [docs](docs/) directory as opposed to the README in the root of the repository, which is auto-generated with every release.
+
+## Release notes
+
+[Towncrier](https://towncrier.readthedocs.io/en/stable/index.html) is used to generate release notes.
+If you add a changelog fragment to the `changelog.d` directory with `just add-changelog` (requires [just](https://github.com/casey/just#installation)) it will automatically be picked up when a new release is made.

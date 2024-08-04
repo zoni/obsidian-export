@@ -22,6 +22,19 @@
         "packageNameTemplate": "rust-lang/rust",
         "datasourceTemplate": "github-releases"
       },
+      {
+        "customType": "regex",
+        "fileMatch": ["^Justfile$"],
+        "matchStrings": [
+          // https://regex101.com/r/vOmY6R/1
+          // Matching on word boundaries (\b) around start and end ensures we
+          // match variations like "towncrier==1.2.3" as well as "pipx run
+          // towncrier==1.2.3", adding some future proofness.
+          "\".*\\btowncrier==(?<currentValue>.+?)\\b\""
+        ],
+        "depNameTemplate": "towncrier",
+        "datasourceTemplate": "pypi"
+      },
     ],
     packageRules: [
         {
