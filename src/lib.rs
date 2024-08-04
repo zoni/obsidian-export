@@ -1,8 +1,5 @@
 pub use {pulldown_cmark, serde_yaml};
 
-#[macro_use]
-extern crate lazy_static;
-
 mod context;
 mod frontmatter;
 pub mod postprocessors;
@@ -898,20 +895,22 @@ fn codeblock_kind_to_owned<'a>(codeblock_kind: CodeBlockKind<'_>) -> CodeBlockKi
 
 #[cfg(test)]
 mod tests {
+    use std::sync::LazyLock;
+
     use pretty_assertions::assert_eq;
     use rstest::rstest;
 
     use super::*;
 
-    lazy_static! {
-        static ref VAULT: Vec<PathBuf> = vec![
+    static VAULT: LazyLock<Vec<PathBuf>> = LazyLock::new(|| {
+        vec![
             PathBuf::from("NoteA.md"),
             PathBuf::from("Document.pdf"),
             PathBuf::from("Note.1.md"),
             PathBuf::from("nested/NoteA.md"),
             PathBuf::from("Note\u{E4}.md"), // Noteä.md, see also encodings() below
-        ];
-    }
+        ]
+    });
 
     #[test]
     #[allow(clippy::unicode_not_nfc)]

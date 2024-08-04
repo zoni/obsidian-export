@@ -1,11 +1,11 @@
 use std::fmt;
+use std::sync::LazyLock;
 
 use regex::Regex;
 
-lazy_static! {
-    static ref OBSIDIAN_NOTE_LINK_RE: Regex =
-        Regex::new(r"^(?P<file>[^#|]+)??(#(?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap();
-}
+static OBSIDIAN_NOTE_LINK_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(?P<file>[^#|]+)??(#(?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap()
+});
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 /// `ObsidianNoteReference` represents the structure of a `[[note]]` or `![[embed]]` reference.

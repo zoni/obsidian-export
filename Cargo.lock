@@ -360,7 +360,6 @@ dependencies = [
  "eyre",
  "gumdrop",
  "ignore",
- "lazy_static",
  "matter",
  "pathdiff",
  "percent-encoding",
