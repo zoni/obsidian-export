@@ -467,6 +467,7 @@ impl<'a> Exporter<'a> {
 
     #[allow(clippy::too_many_lines)]
     #[allow(clippy::panic_in_result_fn)]
+    #[allow(clippy::shadow_unrelated)]
     fn parse_obsidian_note<'b>(
         &self,
         path: &Path,
@@ -478,23 +479,40 @@ impl<'a> Exporter<'a> {
             });
         }
         let content = fs::read_to_string(path).context(ReadSnafu { path })?;
-        let (frontmatter, content) =
-            matter::matter(&content).unwrap_or((String::new(), content.clone()));
-        let frontmatter =
-            frontmatter_from_str(&frontmatter).context(FrontMatterDecodeSnafu { path })?;
+        let mut frontmatter = String::new();
 
         let parser_options = Options::ENABLE_TABLES
             | Options::ENABLE_FOOTNOTES
             | Options::ENABLE_STRIKETHROUGH
             | Options::ENABLE_TASKLISTS
-            | Options::ENABLE_MATH;
+            | Options::ENABLE_MATH
+            | Options::ENABLE_YAML_STYLE_METADATA_BLOCKS;
 
         let mut ref_parser = RefParser::new();
         let mut events = vec![];
         // Most of the time, a reference triggers 5 events: [ or ![, [, <text>, ], ]
         let mut buffer = Vec::with_capacity(5);
 
-        for event in Parser::new_ext(&content, parser_options) {
+        let mut parser = Parser::new_ext(&content, parser_options);
+        'outer: while let Some(event) = parser.next() {
+            // When encountering a metadata block (frontmatter), collect all events until getting
+            // to the end of the block, at which point the nested loop will break out to the outer
+            // loop again.
+            if matches!(event, Event::Start(Tag::MetadataBlock(_kind))) {
+                for event in parser.by_ref() {
+                    match event {
+                        Event::Text(cowstr) => frontmatter.push_str(&cowstr),
+                        Event::End(TagEnd::MetadataBlock(_kind)) => {
+                            continue 'outer;
+                        },
+                        _ => panic!(
+                            "Encountered an unexpected event while processing frontmatter in {}. Please report this as a bug with a copy of the note contents and this text: \n\nEvent: {:?}\n",
+                            path.display(),
+                            event
+                        ),
+                    }
+                }
+            }
             if ref_parser.state == RefParserState::Resetting {
                 events.append(&mut buffer);
                 buffer.clear();
@@ -583,8 +601,9 @@ impl<'a> Exporter<'a> {
         if !buffer.is_empty() {
             events.append(&mut buffer);
         }
+
         Ok((
-            frontmatter,
+            frontmatter_from_str(&frontmatter).context(FrontMatterDecodeSnafu { path })?,
             events.into_iter().map(event_to_owned).collect(),
         ))
     }
