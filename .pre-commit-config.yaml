@@ -15,23 +15,18 @@ repos:
     hooks:
       - id: rustfmt
         name: Check formatting
-        entry: cargo fmt --
+        entry: cargo +nightly fmt --
         language: system
         files: \.rs$
       - id: tests
         name: Run tests
-        entry: cargo test
+        entry: cargo test --all-targets --all-features
         language: system
         files: \.rs$
         pass_filenames: false
       - id: clippy
         name: Check clippy lints
-        entry: cargo clippy -- -D warnings
+        entry: cargo clippy --all-targets --all-features -- -D warnings
         language: system
         files: \.rs$
         pass_filenames: false
-      - id: README
-        name: Render README.md
-        entry: docs/generate.sh
-        language: script
-        files: ^(README\.md)|(docs/.*)

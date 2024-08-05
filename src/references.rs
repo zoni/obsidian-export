@@ -1,13 +1,14 @@
-use regex::Regex;
 use std::fmt;
+use std::sync::LazyLock;
 
-lazy_static! {
-    static ref OBSIDIAN_NOTE_LINK_RE: Regex =
-        Regex::new(r"^(?P<file>[^#|]+)??(#(?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap();
-}
+use regex::Regex;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-/// ObsidianNoteReference represents the structure of a `[[note]]` or `![[embed]]` reference.
+static OBSIDIAN_NOTE_LINK_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(?P<file>[^#|]+)??(#(?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap()
+});
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+/// `ObsidianNoteReference` represents the structure of a `[[note]]` or `![[embed]]` reference.
 pub struct ObsidianNoteReference<'a> {
     /// The file (note name or partial path) being referenced.
     /// This will be None in the case that the reference is to a section within the same document
@@ -19,7 +20,7 @@ pub struct ObsidianNoteReference<'a> {
 }
 
 #[derive(PartialEq, Eq)]
-/// RefParserState enumerates all the possible parsing states [RefParser] may enter.
+/// `RefParserState` enumerates all the possible parsing states [`RefParser`] may enter.
 pub enum RefParserState {
     NoState,
     ExpectSecondOpenBracket,
@@ -29,13 +30,13 @@ pub enum RefParserState {
     Resetting,
 }
 
-/// RefType indicates whether a note reference is a link (`[[note]]`) or embed (`![[embed]]`).
+/// `RefType` indicates whether a note reference is a link (`[[note]]`) or embed (`![[embed]]`).
 pub enum RefType {
     Link,
     Embed,
 }
 
-/// RefParser holds state which is used to parse Obsidian WikiLinks (`[[note]]`, `![[embed]]`).
+/// `RefParser` holds state which is used to parse Obsidian `WikiLinks` (`[[note]]`, `![[embed]]`).
 pub struct RefParser {
     pub state: RefParserState,
     pub ref_type: Option<RefType>,
@@ -49,8 +50,8 @@ pub struct RefParser {
 }
 
 impl RefParser {
-    pub fn new() -> RefParser {
-        RefParser {
+    pub const fn new() -> Self {
+        Self {
             state: RefParserState::NoState,
             ref_type: None,
             ref_text: String::new(),
@@ -69,7 +70,7 @@ impl RefParser {
 }
 
 impl<'a> ObsidianNoteReference<'a> {
-    pub fn from_str(text: &str) -> ObsidianNoteReference {
+    pub fn from_str(text: &str) -> ObsidianNoteReference<'_> {
         let captures = OBSIDIAN_NOTE_LINK_RE
             .captures(text)
             .expect("note link regex didn't match - bad input?");
@@ -85,23 +86,23 @@ impl<'a> ObsidianNoteReference<'a> {
     }
 
     pub fn display(&self) -> String {
-        format!("{}", self)
+        format!("{self}")
     }
 }
 
 impl<'a> fmt::Display for ObsidianNoteReference<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let label =
-            self.label
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| match (self.file, self.section) {
-                    (Some(file), Some(section)) => format!("{} > {}", file, section),
-                    (Some(file), None) => file.to_string(),
-                    (None, Some(section)) => section.to_string(),
+        let label = self.label.map_or_else(
+            || match (self.file, self.section) {
+                (Some(file), Some(section)) => format!("{file} > {section}"),
+                (Some(file), None) => file.to_owned(),
+                (None, Some(section)) => section.to_owned(),
 
-                    _ => panic!("Reference exists without file or section!"),
-                });
-        write!(f, "{}", label)
+                _ => panic!("Reference exists without file or section!"),
+            },
+            ToString::to_string,
+        );
+        write!(f, "{label}")
     }
 }
 

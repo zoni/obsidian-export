@@ -35,9 +35,11 @@ You can see some examples of this in:
 
 ## Conventions
 
-Code is formatted with [rustfmt](https://github.com/rust-lang/rustfmt) using the default options.
-In addition, all default [clippy](https://github.com/rust-lang/rust-clippy) checks on the latest stable Rust compiler must also pass.
-Both of these are enforced through CI using GitHub actions.
+Code is formatted with [rustfmt](https://github.com/rust-lang/rustfmt).
+The nightly toolchain is used for this as things like sorting of imports is not yet available on stable yet.
+If you don't have the nightly toolchain installed, run: `rustup toolchain install nightly --component rustfmt`
+
+In addition, [clippy](https://github.com/rust-lang/rust-clippy) is configured to be quite pedantic and all of its checks must also pass for CI builds to succeed.
 
 > **💡 Tip: install pre-commit hooks**
 >
@@ -72,4 +74,9 @@ If you don't feel comfortable writing user documentation, I will be happy to gui
 
 > **⚠ Warning**
 >
-> If you update the README file, take note that you must edit the fragments in the [docs](docs/) directory as opposed to the README in the root of the repository, which is auto-generated.
+> If you update the README file, take note that you must edit the fragments in the [docs](docs/) directory as opposed to the README in the root of the repository, which is auto-generated with every release.
+
+## Release notes
+
+[Towncrier](https://towncrier.readthedocs.io/en/stable/index.html) is used to generate release notes.
+If you add a changelog fragment to the `changelog.d` directory with `just add-changelog` (requires [just](https://github.com/casey/just#installation)) it will automatically be picked up when a new release is made.

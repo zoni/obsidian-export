@@ -1,5 +1,6 @@
-use crate::Frontmatter;
 use std::path::{Path, PathBuf};
+
+use crate::Frontmatter;
 
 #[derive(Debug, Clone)]
 /// Context holds metadata about a note which is being parsed.
@@ -21,7 +22,7 @@ pub struct Context {
     pub destination: PathBuf,
 
     /// The [Frontmatter] for this note. Frontmatter may be modified in-place (see
-    /// [serde_yaml::Mapping] for available methods) or replaced entirely.
+    /// [`serde_yaml::Mapping`] for available methods) or replaced entirely.
     ///
     /// # Example
     ///
@@ -36,18 +37,19 @@ pub struct Context {
     /// # let mut context = Context::new(PathBuf::from("source"), PathBuf::from("destination"));
     /// let key = Value::String("foo".to_string());
     ///
-    /// context.frontmatter.insert(
-    ///     key.clone(),
-    ///     Value::String("bar".to_string()),
-    /// );
+    /// context
+    ///     .frontmatter
+    ///     .insert(key.clone(), Value::String("bar".to_string()));
     /// ```
     pub frontmatter: Frontmatter,
 }
 
 impl Context {
     /// Create a new `Context`
-    pub fn new(src: PathBuf, dest: PathBuf) -> Context {
-        Context {
+    #[inline]
+    #[must_use]
+    pub fn new(src: PathBuf, dest: PathBuf) -> Self {
+        Self {
             file_tree: vec![src],
             destination: dest,
             frontmatter: Frontmatter::new(),
@@ -55,13 +57,17 @@ impl Context {
     }
 
     /// Create a new `Context` which inherits from a parent Context.
-    pub fn from_parent(context: &Context, child: &Path) -> Context {
+    #[inline]
+    #[must_use]
+    pub fn from_parent(context: &Self, child: &Path) -> Self {
         let mut context = context.clone();
         context.file_tree.push(child.to_path_buf());
         context
     }
 
     /// Return the path of the file currently being parsed.
+    #[inline]
+    #[must_use]
     pub fn current_file(&self) -> &PathBuf {
         self.file_tree
             .last()
@@ -72,6 +78,8 @@ impl Context {
     ///
     /// Typically this will yield the same element as `current_file`, but when a note is embedded
     /// within another note, this will return the outer-most note.
+    #[inline]
+    #[must_use]
     pub fn root_file(&self) -> &PathBuf {
         self.file_tree
             .first()
@@ -79,6 +87,8 @@ impl Context {
     }
 
     /// Return the note depth (nesting level) for this context.
+    #[inline]
+    #[must_use]
     pub fn note_depth(&self) -> usize {
         self.file_tree.len()
     }
@@ -87,6 +97,8 @@ impl Context {
     ///
     /// The first element corresponds to the root file, the final element corresponds to the file
     /// which is currently being processed (see also `current_file`).
+    #[inline]
+    #[must_use]
     pub fn file_tree(&self) -> Vec<PathBuf> {
         self.file_tree.clone()
     }

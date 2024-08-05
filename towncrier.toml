@@ -1,0 +1,34 @@
+[tool.towncrier]
+name = "obsidian-export"
+directory = "changelog.d"
+template = "changelog.d/template.md"
+filename = "CHANGELOG.md"
+start_string = "<!-- towncrier release notes start -->\n"
+underlines = ["", "", ""]
+title_format = ""
+issue_format = "[#{issue}](https://github.com/zoni/obsidian-export/issues/{issue})"
+
+[[tool.towncrier.type]]
+directory = "new"
+name = "New Features"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "change"
+name = "Changes"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "fix"
+name = "Fixes"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "breaking"
+name = "Backwards-incompatible Changes"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "deprecation"
+name = "Deprecations"
+showcontent = true

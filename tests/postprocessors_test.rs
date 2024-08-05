@@ -1,39 +1,39 @@
 use obsidian_export::postprocessors::{
     filter_by_tags, remove_obsidian_comments, softbreaks_to_hardbreaks,
 };
-use obsidian_export::{Context, Exporter, MarkdownEvents, PostprocessorResult};
-use pretty_assertions::assert_eq;
-use pulldown_cmark::{CowStr, Event};
-use serde_yaml::Value;
 use std::collections::HashSet;
 use std::fs::{read_to_string, remove_file};
 use std::path::PathBuf;
 use std::sync::Mutex;
+
+use obsidian_export::{Context, Exporter, MarkdownEvents, PostprocessorResult};
+use pretty_assertions::assert_eq;
+use pulldown_cmark::{CowStr, Event};
+use serde_yaml::Value;
 use tempfile::TempDir;
 use walkdir::WalkDir;
 
-/// This postprocessor replaces any instance of "foo" with "bar" in the note body.
-fn foo_to_bar(_ctx: &mut Context, events: &mut MarkdownEvents) -> PostprocessorResult {
+/// This postprocessor replaces any instance of "foo" with "bar" in the note
+/// body.
+fn foo_to_bar(_ctx: &mut Context, events: &mut MarkdownEvents<'_>) -> PostprocessorResult {
     for event in events.iter_mut() {
         if let Event::Text(text) = event {
-            *event = Event::Text(CowStr::from(text.replace("foo", "bar")))
+            *event = Event::Text(CowStr::from(text.replace("foo", "bar")));
         }
     }
     PostprocessorResult::Continue
 }
 
 /// This postprocessor appends "bar: baz" to frontmatter.
-fn append_frontmatter(ctx: &mut Context, _events: &mut MarkdownEvents) -> PostprocessorResult {
-    ctx.frontmatter.insert(
-        Value::String("bar".to_string()),
-        Value::String("baz".to_string()),
-    );
+fn append_frontmatter(ctx: &mut Context, _events: &mut MarkdownEvents<'_>) -> PostprocessorResult {
+    ctx.frontmatter
+        .insert(Value::String("bar".into()), Value::String("baz".into()));
     PostprocessorResult::Continue
 }
 
-// The purpose of this test to verify the `append_frontmatter` postprocessor is called to extend
-// the frontmatter, and the `foo_to_bar` postprocessor is called to replace instances of "foo" with
-// "bar" (only in the note body).
+// The purpose of this test to verify the `append_frontmatter` postprocessor is
+// called to extend the frontmatter, and the `foo_to_bar` postprocessor is
+// called to replace instances of "foo" with "bar" (only in the note body).
 #[test]
 fn test_postprocessors() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
@@ -110,11 +110,12 @@ fn test_postprocessor_change_destination() {
     assert!(new_note_path.exists());
 }
 
-// Ensure postprocessor type definition has proper lifetimes to allow state (here: `parents`)
-// to be passed in. Otherwise, this fails with an error like:
+// Ensure postprocessor type definition has proper lifetimes to allow state
+// (here: `parents`) to be passed in. Otherwise, this fails with an error like:
 //     error[E0597]: `parents` does not live long enough
 //     cast requires that `parents` is borrowed for `'static`
 #[test]
+#[allow(clippy::significant_drop_tightening)]
 fn test_postprocessor_stateful_callback() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
     let mut exporter = Exporter::new(
@@ -122,8 +123,8 @@ fn test_postprocessor_stateful_callback() {
         tmp_dir.path().to_path_buf(),
     );
 
-    let parents: Mutex<HashSet<PathBuf>> = Default::default();
-    let callback = |ctx: &mut Context, _mdevents: &mut MarkdownEvents| -> PostprocessorResult {
+    let parents: Mutex<HashSet<PathBuf>> = Mutex::default();
+    let callback = |ctx: &mut Context, _mdevents: &mut MarkdownEvents<'_>| -> PostprocessorResult {
         parents
             .lock()
             .unwrap()
@@ -137,14 +138,14 @@ fn test_postprocessor_stateful_callback() {
     let expected = tmp_dir.path();
 
     let parents = parents.lock().unwrap();
-    println!("{:?}", parents);
+    println!("{parents:?}");
     assert_eq!(1, parents.len());
     assert!(parents.contains(expected));
 }
 
-// The purpose of this test to verify the `append_frontmatter` postprocessor is called to extend
-// the frontmatter, and the `foo_to_bar` postprocessor is called to replace instances of "foo" with
-// "bar" (only in the note body).
+// The purpose of this test to verify the `append_frontmatter` postprocessor is
+// called to extend the frontmatter, and the `foo_to_bar` postprocessor is
+// called to replace instances of "foo" with "bar" (only in the note body).
 #[test]
 fn test_embed_postprocessors() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
@@ -165,8 +166,8 @@ fn test_embed_postprocessors() {
     assert_eq!(expected, actual);
 }
 
-// When StopAndSkipNote is used with an embed_preprocessor, it should skip the embedded note but
-// continue with the rest of the note.
+// When StopAndSkipNote is used with an embed_preprocessor, it should skip the
+// embedded note but continue with the rest of the note.
 #[test]
 fn test_embed_postprocessors_stop_and_skip() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
@@ -185,10 +186,12 @@ fn test_embed_postprocessors_stop_and_skip() {
     assert_eq!(expected, actual);
 }
 
-// This test verifies that the context which is passed to an embed postprocessor is actually
-// correct. Primarily, this means the frontmatter should reflect that of the note being embedded as
-// opposed to the frontmatter of the root note.
+// This test verifies that the context which is passed to an embed postprocessor
+// is actually correct. Primarily, this means the frontmatter should reflect
+// that of the note being embedded as opposed to the frontmatter of the root
+// note.
 #[test]
+#[allow(clippy::manual_assert)]
 fn test_embed_postprocessors_context() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
     let mut exporter = Exporter::new(
@@ -202,32 +205,34 @@ fn test_embed_postprocessors_context() {
         }
         let is_root_note = ctx
             .frontmatter
-            .get(&Value::String("is_root_note".to_string()))
+            .get(Value::String("is_root_note".into()))
             .unwrap();
         if is_root_note != &Value::Bool(true) {
-            // NOTE: Test failure may not give output consistently because the test binary affects
-            // how output is captured and printed in the thread running this postprocessor. Just
-            // run the test a couple times until the error shows up.
+            // NOTE: Test failure may not give output consistently because the test binary
+            // affects how output is captured and printed in the thread running
+            // this postprocessor. Just run the test a couple times until the
+            // error shows up.
             panic!(
                 "postprocessor: expected is_root_note in {} to be true, got false",
                 &ctx.current_file().display()
-            )
+            );
         }
         PostprocessorResult::Continue
     });
     exporter.add_embed_postprocessor(&|ctx, _mdevents| {
         let is_root_note = ctx
             .frontmatter
-            .get(&Value::String("is_root_note".to_string()))
+            .get(Value::String("is_root_note".into()))
             .unwrap();
         if is_root_note == &Value::Bool(true) {
-            // NOTE: Test failure may not give output consistently because the test binary affects
-            // how output is captured and printed in the thread running this postprocessor. Just
-            // run the test a couple times until the error shows up.
+            // NOTE: Test failure may not give output consistently because the test binary
+            // affects how output is captured and printed in the thread running
+            // this postprocessor. Just run the test a couple times until the
+            // error shows up.
             panic!(
                 "embed_postprocessor: expected is_root_note in {} to be false, got true",
                 &ctx.current_file().display()
-            )
+            );
         }
         PostprocessorResult::Continue
     });
@@ -259,8 +264,8 @@ fn test_filter_by_tags() {
         tmp_dir.path().to_path_buf(),
     );
     let filter_by_tags = filter_by_tags(
-        vec!["private".to_string(), "no-export".to_string()],
-        vec!["export".to_string()],
+        vec!["private".into(), "no-export".into()],
+        vec!["export".into()],
     );
     exporter.add_postprocessor(&filter_by_tags);
     exporter.run().unwrap();

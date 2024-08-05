@@ -1,13 +1,15 @@
-use obsidian_export::{ExportError, Exporter, FrontmatterStrategy};
-use pretty_assertions::assert_eq;
+#![allow(clippy::shadow_unrelated)]
+
 use std::fs::{create_dir, read_to_string, set_permissions, File, Permissions};
 use std::io::prelude::*;
-use std::path::PathBuf;
-use tempfile::TempDir;
-use walkdir::WalkDir;
-
 #[cfg(not(target_os = "windows"))]
 use std::os::unix::fs::PermissionsExt;
+use std::path::PathBuf;
+
+use obsidian_export::{ExportError, Exporter, FrontmatterStrategy};
+use pretty_assertions::assert_eq;
+use tempfile::TempDir;
+use walkdir::WalkDir;
 
 #[test]
 fn test_main_variants_with_default_options() {
@@ -237,7 +239,7 @@ fn test_not_existing_source() {
     .unwrap_err();
 
     match err {
-        ExportError::PathDoesNotExist { path: _ } => {}
+        ExportError::PathDoesNotExist { .. } => {}
         _ => panic!("Wrong error variant: {:?}", err),
     }
 }
@@ -254,15 +256,15 @@ fn test_not_existing_destination_with_source_dir() {
     .unwrap_err();
 
     match err {
-        ExportError::PathDoesNotExist { path: _ } => {}
+        ExportError::PathDoesNotExist { .. } => {}
         _ => panic!("Wrong error variant: {:?}", err),
     }
 }
 
 #[test]
-// This test ensures that when source is a file, but destination points to a regular file
-// inside of a non-existent directory, an error is raised instead of that directory path being
-// created (like `mkdir -p`)
+// This test ensures that when source is a file, but destination points to a
+// regular file inside of a non-existent directory, an error is raised instead
+// of that directory path being created (like `mkdir -p`)
 fn test_not_existing_destination_with_source_file() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
 
@@ -274,7 +276,7 @@ fn test_not_existing_destination_with_source_file() {
     .unwrap_err();
 
     match err {
-        ExportError::PathDoesNotExist { path: _ } => {}
+        ExportError::PathDoesNotExist { .. } => {}
         _ => panic!("Wrong error variant: {:?}", err),
     }
 }
@@ -287,12 +289,12 @@ fn test_source_no_permissions() {
     let dest = tmp_dir.path().to_path_buf().join("dest.md");
 
     let mut file = File::create(&src).unwrap();
-    file.write_all("Foo".as_bytes()).unwrap();
+    file.write_all(b"Foo").unwrap();
     set_permissions(&src, Permissions::from_mode(0o000)).unwrap();
 
     match Exporter::new(src, dest).run().unwrap_err() {
-        ExportError::FileExportError { path: _, source } => match *source {
-            ExportError::ReadError { path: _, source: _ } => {}
+        ExportError::FileExportError { source, .. } => match *source {
+            ExportError::ReadError { .. } => {}
             _ => panic!("Wrong error variant for source, got: {:?}", source),
         },
         err => panic!("Wrong error variant: {:?}", err),
@@ -307,14 +309,14 @@ fn test_dest_no_permissions() {
     let dest = tmp_dir.path().to_path_buf().join("dest");
 
     let mut file = File::create(&src).unwrap();
-    file.write_all("Foo".as_bytes()).unwrap();
+    file.write_all(b"Foo").unwrap();
 
     create_dir(&dest).unwrap();
     set_permissions(&dest, Permissions::from_mode(0o555)).unwrap();
 
     match Exporter::new(src, dest).run().unwrap_err() {
-        ExportError::FileExportError { path: _, source } => match *source {
-            ExportError::WriteError { path: _, source: _ } => {}
+        ExportError::FileExportError { source, .. } => match *source {
+            ExportError::WriteError { .. } => {}
             _ => panic!("Wrong error variant for source, got: {:?}", source),
         },
         err => panic!("Wrong error variant: {:?}", err),
@@ -333,7 +335,7 @@ fn test_infinite_recursion() {
     .unwrap_err();
 
     match err {
-        ExportError::FileExportError { path: _, source } => match *source {
+        ExportError::FileExportError { source, .. } => match *source {
             ExportError::RecursionLimitExceeded { .. } => {}
             _ => panic!("Wrong error variant for source, got: {:?}", source),
         },
@@ -356,6 +358,44 @@ fn test_no_recursive_embeds() {
         read_to_string("tests/testdata/expected/infinite-recursion/Note A.md").unwrap(),
         read_to_string(tmp_dir.path().join(PathBuf::from("Note A.md"))).unwrap(),
     );
+}
+
+#[test]
+fn test_preserve_mtime() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+
+    let mut exporter = Exporter::new(
+        PathBuf::from("tests/testdata/input/main-samples/"),
+        tmp_dir.path().to_path_buf(),
+    );
+    exporter.preserve_mtime(true);
+    exporter.run().expect("exporter returned error");
+
+    let src = "tests/testdata/input/main-samples/obsidian-wikilinks.md";
+    let dest = tmp_dir.path().join(PathBuf::from("obsidian-wikilinks.md"));
+    let src_meta = std::fs::metadata(src).unwrap();
+    let dest_meta = std::fs::metadata(dest).unwrap();
+
+    assert_eq!(src_meta.modified().unwrap(), dest_meta.modified().unwrap());
+}
+
+#[test]
+fn test_no_preserve_mtime() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+
+    let mut exporter = Exporter::new(
+        PathBuf::from("tests/testdata/input/main-samples/"),
+        tmp_dir.path().to_path_buf(),
+    );
+    exporter.preserve_mtime(false);
+    exporter.run().expect("exporter returned error");
+
+    let src = "tests/testdata/input/main-samples/obsidian-wikilinks.md";
+    let dest = tmp_dir.path().join(PathBuf::from("obsidian-wikilinks.md"));
+    let src_meta = std::fs::metadata(src).unwrap();
+    let dest_meta = std::fs::metadata(dest).unwrap();
+
+    assert_ne!(src_meta.modified().unwrap(), dest_meta.modified().unwrap());
 }
 
 #[test]

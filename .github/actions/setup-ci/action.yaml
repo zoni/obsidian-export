@@ -1,0 +1,19 @@
+name: Setup CI environment
+inputs:
+  rust-cache-key:
+    description: "An additional cache key that is added alongside the automatic `job`-based cache key and can be used to further differentiate jobs."
+    required: false
+  rust-cache-shared-key:
+    description: "A cache key that is used instead of the automatic `job`-based key, and is stable over multiple jobs."
+    required: false
+runs:
+  using: "composite"
+  steps:
+    - name: Install rust toolchain
+      shell: bash
+      run: rustup show
+
+    - uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2
+      with:
+        key: "${{ inputs.rust-cache-key }}"
+        shared-key: "${{ inputs.rust-cache-shared-key }}"
