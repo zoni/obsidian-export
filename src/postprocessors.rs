@@ -65,7 +65,7 @@ pub enum CommentStrategy {
     Remove,
 }
 
-#[allow(clippy::else_if_without_else, clippy::arithmetic_side_effects)]
+#[allow(clippy::arithmetic_side_effects)]
 /// This postprocessor removes all Obsidian comments from a file excluding codeblocks. Enabling this
 /// prohibits comments from being exported but leaves them untouched in the original files
 pub fn remove_obsidian_comments(
@@ -87,7 +87,9 @@ pub fn remove_obsidian_comments(
                         output.pop(); //Inside block comment so remove
                     }
                     continue;
-                } else if inside_codeblock {
+                }
+
+                if inside_codeblock {
                     continue; //Skip anything inside codeblocks
                 }
 
