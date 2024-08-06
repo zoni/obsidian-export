@@ -3,7 +3,12 @@ use std::path::PathBuf;
 
 use eyre::{eyre, Result};
 use gumdrop::Options;
-use obsidian_export::postprocessors::{filter_by_tags, softbreaks_to_hardbreaks};
+use obsidian_export::postprocessors::{
+    filter_by_tags,
+    remove_obsidian_comments,
+    softbreaks_to_hardbreaks,
+    CommentStrategy,
+};
 use obsidian_export::{ExportError, Exporter, FrontmatterStrategy, WalkOptions};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -65,17 +70,20 @@ struct Opts {
     preserve_mtime: bool,
 
     #[options(
+        help = "Comment strategy (one of: keep-unchanged or remove)",
         no_short,
         help = "Convert soft line breaks to hard line breaks. This mimics Obsidian's 'Strict line breaks' setting",
         default = "false"
     )]
     hard_linebreaks: bool,
+
     #[options(
         no_short,
-        help = "Remove Obsidian style comments from exported file",
-        default = "false"
+        long = "comments",
+        parse(try_from_str = "comment_strategy_from_str"),
+        default = "keep-unchanged"
     )]
-    remove_obsidian_comments: bool,
+    comment_strategy: CommentStrategy,
 }
 
 fn frontmatter_strategy_from_str(input: &str) -> Result<FrontmatterStrategy> {
@@ -84,6 +92,14 @@ fn frontmatter_strategy_from_str(input: &str) -> Result<FrontmatterStrategy> {
         "always" => Ok(FrontmatterStrategy::Always),
         "never" => Ok(FrontmatterStrategy::Never),
         _ => Err(eyre!("must be one of: always, never, auto")),
+    }
+}
+
+fn comment_strategy_from_str(input: &str) -> Result<CommentStrategy> {
+    match input {
+        "keep-unchanged" => Ok(CommentStrategy::KeepUnchanged),
+        "remove" => Ok(CommentStrategy::Remove),
+        _ => Err(eyre!("must be one of: keep-unchanged or remove")),
     }
 }
 
@@ -117,7 +133,7 @@ fn main() {
         exporter.add_postprocessor(&softbreaks_to_hardbreaks);
     }
 
-    if args.remove_obsidian_comments {
+    if matches!(args.comment_strategy, CommentStrategy::Remove) {
         exporter.add_postprocessor(&remove_obsidian_comments);
     }
 

@@ -1,11 +1,13 @@
-use obsidian_export::postprocessors::{
-    filter_by_tags, remove_obsidian_comments, softbreaks_to_hardbreaks,
-};
 use std::collections::HashSet;
 use std::fs::{read_to_string, remove_file};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
+use obsidian_export::postprocessors::{
+    filter_by_tags,
+    remove_obsidian_comments,
+    softbreaks_to_hardbreaks,
+};
 use obsidian_export::{Context, Exporter, MarkdownEvents, PostprocessorResult};
 use pretty_assertions::assert_eq;
 use pulldown_cmark::{CowStr, Event};

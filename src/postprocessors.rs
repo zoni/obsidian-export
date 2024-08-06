@@ -1,9 +1,9 @@
 //! A collection of officially maintained [postprocessors][crate::Postprocessor].
 
-use super::{Context, MarkdownEvents, PostprocessorResult};
+use std::cell::LazyCell;
+
 use pulldown_cmark::{CowStr, Event, Tag};
 use regex::Regex;
-
 use serde_yaml::Value;
 
 use super::{Context, MarkdownEvents, PostprocessorResult};
@@ -55,15 +55,27 @@ fn filter_by_tags_(
     }
 }
 
+//Available strategies for what to do with comments
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum CommentStrategy {
+    // Leave comments alone and export them as normal
+    KeepUnchanged,
+    // Remove any comments from the output
+    Remove,
+}
+
+#[allow(clippy::else_if_without_else, clippy::arithmetic_side_effects)]
 /// This postprocessor removes all Obsidian comments from a file excluding codeblocks. Enabling this
 /// prohibits comments from being exported but leaves them untouched in the original files
 pub fn remove_obsidian_comments(
     _context: &mut Context,
-    events: &mut MarkdownEvents,
+    events: &mut MarkdownEvents<'_>,
 ) -> PostprocessorResult {
     let mut output = Vec::with_capacity(events.len());
     let mut inside_comment = false;
     let mut inside_codeblock = false;
+    let re = LazyCell::new(|| Regex::new(r"%%.*?%%").unwrap());
 
     for event in &mut *events {
         output.push(event.to_owned());
@@ -87,7 +99,6 @@ pub fn remove_obsidian_comments(
                 }
 
                 if !text.eq(&CowStr::from("%%")) {
-                    let re = Regex::new(r"%%.*?%%").unwrap();
                     let result = re.replace_all(text, "").to_string();
                     output.push(Event::Text(CowStr::from(result)));
                     continue;
@@ -96,14 +107,25 @@ pub fn remove_obsidian_comments(
                 inside_comment = true;
             }
             Event::Start(Tag::CodeBlock(_)) => {
-                inside_codeblock = true;
+                if inside_comment {
+                    output.pop();
+                } else {
+                    inside_codeblock = true;
+                }
             }
             Event::End(Tag::CodeBlock(_)) => {
-                inside_codeblock = false;
+                if inside_comment {
+                    output.pop();
+                } else {
+                    inside_codeblock = false;
+                }
             }
             Event::End(Tag::Paragraph) => {
-                if output[output.len() - 2] == Event::Start(Tag::Paragraph) {
-                    // If the comment was the only item on the line remove the start and end paragraph events to remove the \n in the output file.
+                if output.len() >= 2
+                    && output.get(output.len() - 2) == Option::from(&Event::Start(Tag::Paragraph))
+                {
+                    // If the comment was the only item on the line remove the start and end
+                    // paragraph events to remove the \n in the output file.
                     output.pop();
                     output.pop();
                 }
