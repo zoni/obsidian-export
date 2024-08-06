@@ -121,7 +121,9 @@ With these hooks in place, links to both notes as well as file attachments shoul
 
 ## Removing Obsidian comments
 
-To remove [Obsidian formatted comments](https://help.obsidian.md/Editing+and+formatting/Basic+formatting+syntax#Comments) you can set the `--remove-obsidian-comments` flag. This will remove inline as well as block comments but leave any comments found in codeblocks.
+By default, comments are kept unchanged in the output.
+
+To remove [Obsidian formatted comments](https://help.obsidian.md/Editing+and+formatting/Basic+formatting+syntax#Comments) you can set the `--comments=remove` flag. This will remove inline as well as block comments but leave any comments found in codeblocks.
 
 ```md
 This is not a comment.
@@ -134,10 +136,12 @@ block comment and
 all of this would be removed
 %%
 ```
-With the `--remove-obsidian-comments` flag. This file would output as
+With the `--comments=remove` flag. This file would output as
 
 ```md
 This is not a comment
 
 This line could have more text.
 ```
+
+> Note: Comments within codeblocks are left untouched
