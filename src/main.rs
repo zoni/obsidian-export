@@ -70,7 +70,6 @@ struct Opts {
     preserve_mtime: bool,
 
     #[options(
-        help = "Comment strategy (one of: keep-unchanged or remove)",
         no_short,
         help = "Convert soft line breaks to hard line breaks. This mimics Obsidian's 'Strict line breaks' setting",
         default = "false"
@@ -79,6 +78,7 @@ struct Opts {
 
     #[options(
         no_short,
+        help = "Comment strategy (one of: keep-unchanged or remove)",
         long = "comments",
         parse(try_from_str = "comment_strategy_from_str"),
         default = "keep-unchanged"
