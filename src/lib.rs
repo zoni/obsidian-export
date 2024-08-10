@@ -19,7 +19,7 @@ use frontmatter::{frontmatter_from_str, frontmatter_to_str};
 pub use frontmatter::{Frontmatter, FrontmatterStrategy};
 use pathdiff::diff_paths;
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
-use pulldown_cmark::{CodeBlockKind, CowStr, Event, HeadingLevel, Options, Parser, Tag};
+use pulldown_cmark::{CodeBlockKind, CowStr, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 use pulldown_cmark_to_cmark::cmark_with_options;
 use rayon::prelude::*;
 use references::{ObsidianNoteReference, RefParser, RefParserState, RefType};
@@ -467,6 +467,7 @@ impl<'a> Exporter<'a> {
 
     #[allow(clippy::too_many_lines)]
     #[allow(clippy::panic_in_result_fn)]
+    #[allow(clippy::shadow_unrelated)]
     fn parse_obsidian_note<'b>(
         &self,
         path: &Path,
@@ -478,23 +479,40 @@ impl<'a> Exporter<'a> {
             });
         }
         let content = fs::read_to_string(path).context(ReadSnafu { path })?;
-        let (frontmatter, content) =
-            matter::matter(&content).unwrap_or((String::new(), content.clone()));
-        let frontmatter =
-            frontmatter_from_str(&frontmatter).context(FrontMatterDecodeSnafu { path })?;
+        let mut frontmatter = String::new();
 
-        let mut parser_options = Options::empty();
-        parser_options.insert(Options::ENABLE_TABLES);
-        parser_options.insert(Options::ENABLE_FOOTNOTES);
-        parser_options.insert(Options::ENABLE_STRIKETHROUGH);
-        parser_options.insert(Options::ENABLE_TASKLISTS);
+        let parser_options = Options::ENABLE_TABLES
+            | Options::ENABLE_FOOTNOTES
+            | Options::ENABLE_STRIKETHROUGH
+            | Options::ENABLE_TASKLISTS
+            | Options::ENABLE_MATH
+            | Options::ENABLE_YAML_STYLE_METADATA_BLOCKS;
 
         let mut ref_parser = RefParser::new();
         let mut events = vec![];
         // Most of the time, a reference triggers 5 events: [ or ![, [, <text>, ], ]
         let mut buffer = Vec::with_capacity(5);
 
-        for event in Parser::new_ext(&content, parser_options) {
+        let mut parser = Parser::new_ext(&content, parser_options);
+        'outer: while let Some(event) = parser.next() {
+            // When encountering a metadata block (frontmatter), collect all events until getting
+            // to the end of the block, at which point the nested loop will break out to the outer
+            // loop again.
+            if matches!(event, Event::Start(Tag::MetadataBlock(_kind))) {
+                for event in parser.by_ref() {
+                    match event {
+                        Event::Text(cowstr) => frontmatter.push_str(&cowstr),
+                        Event::End(TagEnd::MetadataBlock(_kind)) => {
+                            continue 'outer;
+                        },
+                        _ => panic!(
+                            "Encountered an unexpected event while processing frontmatter in {}. Please report this as a bug with a copy of the note contents and this text: \n\nEvent: {:?}\n",
+                            path.display(),
+                            event
+                        ),
+                    }
+                }
+            }
             if ref_parser.state == RefParserState::Resetting {
                 events.append(&mut buffer);
                 buffer.clear();
@@ -583,8 +601,9 @@ impl<'a> Exporter<'a> {
         if !buffer.is_empty() {
             events.append(&mut buffer);
         }
+
         Ok((
-            frontmatter,
+            frontmatter_from_str(&frontmatter).context(FrontMatterDecodeSnafu { path })?,
             events.into_iter().map(event_to_owned).collect(),
         ))
     }
@@ -662,20 +681,18 @@ impl<'a> Exporter<'a> {
                         // into an image reference instead. Slightly hacky, but avoids needing
                         // to keep another utility function around for this, or introducing an
                         // extra parameter on make_link_to_file.
-                        Event::Start(Tag::Link(linktype, cowstr1, cowstr2)) => {
-                            Event::Start(Tag::Image(
-                                linktype,
-                                CowStr::from(cowstr1.into_string()),
-                                CowStr::from(cowstr2.into_string()),
-                            ))
-                        }
-                        Event::End(Tag::Link(linktype, cowstr1, cowstr2)) => {
-                            Event::End(Tag::Image(
-                                linktype,
-                                CowStr::from(cowstr1.into_string()),
-                                CowStr::from(cowstr2.into_string()),
-                            ))
-                        }
+                        Event::Start(Tag::Link {
+                            link_type,
+                            dest_url,
+                            title,
+                            id,
+                        }) => Event::Start(Tag::Image {
+                            link_type,
+                            dest_url: CowStr::from(dest_url.into_string()),
+                            title: CowStr::from(title.into_string()),
+                            id: CowStr::from(id.into_string()),
+                        }),
+                        Event::End(TagEnd::Link) => Event::End(TagEnd::Image),
                         _ => event,
                     })
                     .collect()
@@ -707,7 +724,7 @@ impl<'a> Exporter<'a> {
             return vec![
                 Event::Start(Tag::Emphasis),
                 Event::Text(CowStr::from(reference.display())),
-                Event::End(Tag::Emphasis),
+                Event::End(TagEnd::Emphasis),
             ];
         }
         let target_file = target_file.unwrap();
@@ -731,16 +748,17 @@ impl<'a> Exporter<'a> {
             link.push_str(&slugify(section));
         }
 
-        let link_tag = Tag::Link(
-            pulldown_cmark::LinkType::Inline,
-            CowStr::from(link),
-            CowStr::from(""),
-        );
+        let link_tag = Tag::Link {
+            link_type: pulldown_cmark::LinkType::Inline,
+            dest_url: CowStr::from(link),
+            title: CowStr::from(""),
+            id: CowStr::from(""),
+        };
 
         vec![
-            Event::Start(link_tag.clone()),
+            Event::Start(link_tag),
             Event::Text(CowStr::from(reference.display())),
-            Event::End(link_tag.clone()),
+            Event::End(TagEnd::Link),
         ]
     }
 }
@@ -841,8 +859,7 @@ fn reduce_to_section<'a>(events: MarkdownEvents<'a>, section: &str) -> MarkdownE
     for event in events {
         filtered_events.push(event.clone());
         match event {
-            // FIXME: This should propagate fragment_identifier and classes.
-            Event::Start(Tag::Heading(level, _fragment_identifier, _classes)) => {
+            Event::Start(Tag::Heading { level, .. }) => {
                 last_tag_was_heading = true;
                 last_level = level;
                 if currently_in_target_section && level <= section_level {
@@ -881,10 +898,11 @@ fn reduce_to_section<'a>(events: MarkdownEvents<'a>, section: &str) -> MarkdownE
 fn event_to_owned<'a>(event: Event<'_>) -> Event<'a> {
     match event {
         Event::Start(tag) => Event::Start(tag_to_owned(tag)),
-        Event::End(tag) => Event::End(tag_to_owned(tag)),
+        Event::End(tag) => Event::End(tag),
         Event::Text(cowstr) => Event::Text(CowStr::from(cowstr.into_string())),
         Event::Code(cowstr) => Event::Code(CowStr::from(cowstr.into_string())),
         Event::Html(cowstr) => Event::Html(CowStr::from(cowstr.into_string())),
+        Event::InlineHtml(cowstr) => Event::InlineHtml(CowStr::from(cowstr.into_string())),
         Event::FootnoteReference(cowstr) => {
             Event::FootnoteReference(CowStr::from(cowstr.into_string()))
         }
@@ -892,17 +910,37 @@ fn event_to_owned<'a>(event: Event<'_>) -> Event<'a> {
         Event::HardBreak => Event::HardBreak,
         Event::Rule => Event::Rule,
         Event::TaskListMarker(checked) => Event::TaskListMarker(checked),
+        Event::InlineMath(cowstr) => Event::InlineMath(CowStr::from(cowstr.into_string())),
+        Event::DisplayMath(cowstr) => Event::DisplayMath(CowStr::from(cowstr.into_string())),
     }
 }
 
 fn tag_to_owned<'a>(tag: Tag<'_>) -> Tag<'a> {
     match tag {
         Tag::Paragraph => Tag::Paragraph,
-        Tag::Heading(level, _fragment_identifier, _classes) => {
-            // FIXME: This should propagate fragment_identifier and classes.
-            Tag::Heading(level, None, Vec::new())
-        }
-        Tag::BlockQuote => Tag::BlockQuote,
+        Tag::Heading {
+            level: heading_level,
+            id,
+            classes,
+            attrs,
+        } => Tag::Heading {
+            level: heading_level,
+            id: id.map(|cowstr| CowStr::from(cowstr.into_string())),
+            classes: classes
+                .into_iter()
+                .map(|cowstr| CowStr::from(cowstr.into_string()))
+                .collect(),
+            attrs: attrs
+                .into_iter()
+                .map(|(attr, value)| {
+                    (
+                        CowStr::from(attr.into_string()),
+                        value.map(|cowstr| CowStr::from(cowstr.into_string())),
+                    )
+                })
+                .collect(),
+        },
+        Tag::BlockQuote(blockquote_kind) => Tag::BlockQuote(blockquote_kind),
         Tag::CodeBlock(codeblock_kind) => Tag::CodeBlock(codeblock_kind_to_owned(codeblock_kind)),
         Tag::List(optional) => Tag::List(optional),
         Tag::Item => Tag::Item,
@@ -916,16 +954,30 @@ fn tag_to_owned<'a>(tag: Tag<'_>) -> Tag<'a> {
         Tag::Emphasis => Tag::Emphasis,
         Tag::Strong => Tag::Strong,
         Tag::Strikethrough => Tag::Strikethrough,
-        Tag::Link(linktype, cowstr1, cowstr2) => Tag::Link(
-            linktype,
-            CowStr::from(cowstr1.into_string()),
-            CowStr::from(cowstr2.into_string()),
-        ),
-        Tag::Image(linktype, cowstr1, cowstr2) => Tag::Image(
-            linktype,
-            CowStr::from(cowstr1.into_string()),
-            CowStr::from(cowstr2.into_string()),
-        ),
+        Tag::Link {
+            link_type,
+            dest_url,
+            title,
+            id,
+        } => Tag::Link {
+            link_type,
+            dest_url: CowStr::from(dest_url.into_string()),
+            title: CowStr::from(title.into_string()),
+            id: CowStr::from(id.into_string()),
+        },
+        Tag::Image {
+            link_type,
+            dest_url,
+            title,
+            id,
+        } => Tag::Image {
+            link_type,
+            dest_url: CowStr::from(dest_url.into_string()),
+            title: CowStr::from(title.into_string()),
+            id: CowStr::from(id.into_string()),
+        },
+        Tag::HtmlBlock => Tag::HtmlBlock,
+        Tag::MetadataBlock(metadata_block_kind) => Tag::MetadataBlock(metadata_block_kind),
     }
 }
 

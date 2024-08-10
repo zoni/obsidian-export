@@ -37,7 +37,7 @@
 ~~Strikethrough~~
 
 |Table||
-|-----|--|
+|-----|-|
 |Foo|Bar|
 
 [link text](link-location.md)
