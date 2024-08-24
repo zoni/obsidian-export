@@ -47,7 +47,15 @@
             // lockstep in case of breaking changes, so it's best to group them
             // together.
             "matchPackageNames": ["pulldown-cmark*"],
-            "groupName": "pulldown-cmark (grouped)"
+            // pulldown-cmark is currently on a 0.x release series while
+            // pulldown-cmark-to-cmark tends to bump the major version
+            // component whenever pulldown-cmark creates a new release (which
+            // increments the minor component). Renovate by default creates
+            // separate PRs for major and minor bumps which fails to match up
+            // with the grouping. Disabling this behavior ensures that both
+            // packages are always updated together in a single PR.
+            "separateMajorMinor": false,
+            "groupName": "pulldown-cmark (group)"
         },
   ],
   ignorePaths: [
