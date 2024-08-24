@@ -46,7 +46,7 @@
             // pulldown-cmark and pulldown-cmark-to-mark must be updated in
             // lockstep in case of breaking changes, so it's best to group them
             // together.
-            "matchPackagePatterns": ["^pulldown-cmark.*"],
+            "matchPackageNames": ["pulldown-cmark*"],
             "groupName": "pulldown-cmark (grouped)"
         },
   ],
