@@ -4,6 +4,7 @@
         "schedule:monthly",
         // Group updates to linters together in one PR
         "group:linters",
+        ":semanticCommitsDisabled"
     ],
     dependencyDashboard: true,
     "labels": ["dependencies"],
