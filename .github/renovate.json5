@@ -47,7 +47,7 @@
             // lockstep in case of breaking changes, so it's best to group them
             // together.
             "matchPackagePatterns": ["^pulldown-cmark.*"],
-            "groupName": "pulldown-cmark"
+            "groupName": "pulldown-cmark (grouped)"
         },
   ],
   ignorePaths: [
