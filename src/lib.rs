@@ -978,6 +978,9 @@ fn tag_to_owned<'a>(tag: Tag<'_>) -> Tag<'a> {
         },
         Tag::HtmlBlock => Tag::HtmlBlock,
         Tag::MetadataBlock(metadata_block_kind) => Tag::MetadataBlock(metadata_block_kind),
+        Tag::DefinitionList => Tag::DefinitionList,
+        Tag::DefinitionListTitle => Tag::DefinitionListTitle,
+        Tag::DefinitionListDefinition => Tag::DefinitionListDefinition,
     }
 }
 
