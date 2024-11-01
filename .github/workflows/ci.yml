@@ -5,7 +5,7 @@ jobs:
   populate-rust-cache:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - uses: ./.github/actions/setup-ci
         with:
           rust-cache-shared-key: "base"
@@ -24,7 +24,7 @@ jobs:
           - cargo clippy --all-targets --all-features -- -D warning
       fail-fast: false
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - uses: ./.github/actions/setup-ci
         with:
           rust-cache-shared-key: "base"
@@ -42,7 +42,7 @@ jobs:
     # Prevent sudden announcement of a new advisory from failing CI:
     continue-on-error: ${{ endsWith(matrix.job, 'check advisories') }}
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - uses: ./.github/actions/cargo-binstall
         with:
           binstall: "cargo-deny"
@@ -56,7 +56,7 @@ jobs:
       # These hooks are expensive and already run as dedicated jobs above
       SKIP: "rustfmt,tests,clippy"
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - uses: ./.github/actions/setup-ci
         with:
@@ -83,7 +83,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - run: git config --system core.autocrlf false && git config --system core.eol lf
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - uses: ./.github/actions/setup-ci
       - run: cargo test
 
@@ -92,7 +92,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: populate-rust-cache
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - uses: ./.github/actions/setup-ci
       - uses: ./.github/actions/cargo-binstall
         with:
