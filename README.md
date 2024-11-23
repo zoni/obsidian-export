@@ -12,6 +12,7 @@ WARNING:
 
 -->
 
+
 # Obsidian Export
 
 *Obsidian Export is a CLI program and a Rust library to export an [Obsidian] vault to regular Markdown.*

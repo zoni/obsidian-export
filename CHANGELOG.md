@@ -2,6 +2,48 @@
 
 <!-- towncrier release notes start -->
 
+## [24.11.0](https://github.com/zoni/obsidian-export/tree/24.11.0) - 2024-11-23
+
+### New Features
+
+- Optionally preserve modified time of exported files
+
+  Add a new argument `--preserve-mtime` to keep the original modified time attribute of notes being exported, instead of setting them to the current time.
+
+  Contribution made by [Davis Davalos-DeLosh](https://github.com/Programmerino). ([#154](https://github.com/zoni/obsidian-export/issues/154), [#204](https://github.com/zoni/obsidian-export/issues/204))
+
+### Changes
+
+- Bump to the minimum supported Rust version to 1.80.0
+
+  Obsidian-export now uses [std::sync::LazyLock](https://doc.rust-lang.org/std/sync/struct.LazyLock.html) instead of [lazy_static](https://crates.io/crates/lazy_static), which was only stabilized in Rust 1.80.0.
+  This change made it possible to drop the external dependency on lazy_static, though as a result of this, compiling with older versions will no longer be possible.
+
+### Fixes
+
+- Don't escape square brackets in math expressions
+
+  The upgrade to [pulldown-cmark](https://crates.io/crates/pulldown-cmark) 0.11 (see Backwards-incompatible Changes) includes official support for LaTeX-style math expressions.
+  With the markdown parser supporting this syntax natively, math expressions are now processed correctly without edge-cases. ([#14](https://github.com/zoni/obsidian-export/issues/14), [#252](https://github.com/zoni/obsidian-export/issues/252))
+
+### Backwards-incompatible Changes
+
+- Upgrade [pulldown-cmark](https://crates.io/crates/pulldown-cmark) from 0.9 to 0.12
+
+  pulldown-cmark is the Markdown/CommonMark parser that is used to read and convert notes (together with [pulldown-cmark-to-cmark](https://crates.io/crates/pulldown-cmark-to-cmark)).
+
+  For end-users that call the obsidian-export CLI this upgrade will be mostly transparent, except that Math blocks are now properly processed without getting mangled.
+
+  People who use the library directly may face more significant breaking changes if they have custom postprocessors, as pulldown-cmark's events have gone through various breaking changes.
+  For more information, see:
+
+  - <https://github.com/zoni/obsidian-export/pull/252>
+  - <https://github.com/pulldown-cmark/pulldown-cmark/releases/tag/v0.10.0>
+  - <https://github.com/zoni/obsidian-export/pull/276/files#diff-b1a35a68f14e696205874893c07fd24fdb88882b47c23cc0e0c80a30c7d53759>
+
+  ([#14](https://github.com/zoni/obsidian-export/issues/14), [#252](https://github.com/zoni/obsidian-export/issues/252), [#259](https://github.com/zoni/obsidian-export/issues/259), [#285](https://github.com/zoni/obsidian-export/issues/285))
+
+
 ## v23.12.0 (2023-12-03)
 
 ### New
