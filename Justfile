@@ -63,5 +63,4 @@ make-new-release:
     set +x
     printf "\n\nSuccessfully created release %s\n" "v${VERSION}"
     printf "\nYou'll probably want to continue with:\n"
-    printf "\tgit push origin main\n"
-    printf "\tgit push origin %s\n" "v${VERSION}"
+    printf "\tgit push origin main %s\n" "v${VERSION}"
