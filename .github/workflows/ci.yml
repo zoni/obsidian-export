@@ -66,7 +66,7 @@ jobs:
       - name: set PYVERSION
         run: echo "PYVERSION=$(python --version | tr ' ' '-')" >> $GITHUB_ENV
 
-      - uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
+      - uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4
         with:
           path: ~/.cache/pre-commit
           # Changes to pre-commit-config.yaml may require the installation of
