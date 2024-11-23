@@ -51,12 +51,12 @@ walkdir = "2.5.0"
 inherits = "release"
 lto = "thin"
 
-# Config for 'cargo dist'
+# Config for 'dist'
 [workspace.metadata.dist]
-# The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
-cargo-dist-version = "0.4.3"
+# The preferred dist version to use in CI (Cargo.toml SemVer syntax)
+cargo-dist-version = "0.25.1"
 # CI backends to support
-ci = ["github"]
+ci = "github"
 # The installers to generate for each app
 installers = ["shell", "powershell"]
 # Target platforms to build apps for (Rust target-triple syntax)
@@ -69,12 +69,18 @@ targets = [
 	# "aarch64-pc-windows-msvc",, # Not yet supported (2023-12-03)
 	"x86_64-pc-windows-msvc",
 ]
+# The archive format to use for non-windows builds (defaults .tar.xz)
 unix-archive = ".tar.xz"
+# The archive format to use for windows builds (defaults .zip)
 windows-archive = ".zip"
-# Publish jobs to run in CI
+# Which actions to run on pull requests
 pr-run-mode = "plan"
 # Publish jobs to run in CI
 publish-jobs = ["./publish-crate"]
+# Path that installers should place binaries in
+install-path = "CARGO_HOME"
+# Whether to install an updater program
+install-updater = false
 
 [lints.rust]
 nonstandard_style = { level = "warn", priority = -1 }
