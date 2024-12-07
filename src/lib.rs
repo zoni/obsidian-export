@@ -6,6 +6,7 @@ pub mod postprocessors;
 mod references;
 mod walker;
 
+use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -245,6 +246,7 @@ pub struct Exporter<'a> {
     preserve_mtime: bool,
     postprocessors: Vec<&'a Postprocessor<'a>>,
     embed_postprocessors: Vec<&'a Postprocessor<'a>>,
+    linked_attachments_only: bool,
 }
 
 impl<'a> fmt::Debug for Exporter<'a> {
@@ -291,6 +293,7 @@ impl<'a> Exporter<'a> {
             vault_contents: None,
             postprocessors: vec![],
             embed_postprocessors: vec![],
+            linked_attachments_only: false,
         }
     }
 
@@ -336,6 +339,12 @@ impl<'a> Exporter<'a> {
     /// time of the source file.
     pub fn preserve_mtime(&mut self, preserve: bool) -> &mut Self {
         self.preserve_mtime = preserve;
+        self
+    }
+
+    /// Set whether non-markdown files should only be included if linked or embedded in a note.
+    pub fn linked_attachments_only(&mut self, linked_only: bool) -> &mut Self {
+        self.linked_attachments_only = linked_only;
         self
     }
 
@@ -409,7 +418,11 @@ impl<'a> Exporter<'a> {
                     .expect("file should always be nested under root")
                     .to_path_buf();
                 let destination = &self.destination.join(relative_path);
-                self.export_note(&file, destination)
+                if !self.linked_attachments_only || is_markdown_file(&file) {
+                    self.export_note(&file, destination)
+                } else {
+                    Ok(())
+                }
             })?;
         Ok(())
     }
@@ -583,7 +596,7 @@ impl<'a> Exporter<'a> {
                         Some(RefType::Embed) => {
                             let mut elements = self.embed_file(
                                 ref_parser.ref_text.clone().as_ref(),
-                                context
+                                context,
                             )?;
                             events.append(&mut elements);
                             buffer.clear();
@@ -673,6 +686,7 @@ impl<'a> Exporter<'a> {
                 }
                 events
             }
+            // TODO: Include image in a list of attachments
             Some("png" | "jpg" | "jpeg" | "gif" | "webp" | "svg") => {
                 self.make_link_to_file(note_ref, &child_context)
                     .into_iter()
@@ -728,6 +742,16 @@ impl<'a> Exporter<'a> {
             ];
         }
         let target_file = target_file.unwrap();
+        if self.linked_attachments_only && !is_markdown_file(target_file) {
+            let relative_path = target_file
+                .strip_prefix(self.start_at.clone())
+                .expect("file should always be nested under root")
+                .to_path_buf();
+            let destination = &self.destination.join(relative_path);
+            // We should probably do something to handle errors here, but it would require a bit of
+            // structural change.
+            let _ = self.export_note(target_file, destination);
+        }
         // We use root_file() rather than current_file() here to make sure links are always
         // relative to the outer-most note, which is the note which this content is inserted into
         // in case of embedded notes.
