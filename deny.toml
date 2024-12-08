@@ -29,13 +29,15 @@ allow = [
     "BSD-2-Clause",
     "BSD-2-Clause-Patent",
     "BSD-3-Clause",
+    "ISC",
     "MIT",
     "MPL-2.0",
 ]
 unused-allowed-license = "allow"
 exceptions = [
-    { allow = ["Unicode-DFS-2016"], crate = "unicode-ident" },
+    { allow = ["Unicode-3.0"], crate = "unicode-ident" },
 ]
+
 # Default confidence is 0.8, let's require a higher confidence level for now.
 # We can lower this later if it's too pedantic.
 confidence-threshold = 0.95
