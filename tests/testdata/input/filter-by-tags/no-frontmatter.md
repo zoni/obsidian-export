@@ -1,1 +1,3 @@
-A note without frontmatter should be exported.
+A note without frontmatter should not be exported.
+
+![[note.pdf]]
