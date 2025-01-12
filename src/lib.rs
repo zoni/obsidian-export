@@ -553,6 +553,20 @@ impl<'a> Exporter<'a> {
                         ref_parser.ref_text.push_str(&text);
                         ref_parser.transition(RefParserState::ExpectRefTextOrCloseBracket);
                     }
+                    Event::Start(Tag::Emphasis) | Event::End(TagEnd::Emphasis) => {
+                        ref_parser.ref_text.push('*');
+                        ref_parser.transition(RefParserState::ExpectRefTextOrCloseBracket);
+
+                    }
+                    Event::Start(Tag::Strong) | Event::End(TagEnd::Strong)=> {
+                        ref_parser.ref_text.push_str("**");
+                        ref_parser.transition(RefParserState::ExpectRefTextOrCloseBracket);
+
+                    }
+                    Event::Start(Tag::Strikethrough) | Event::End(TagEnd::Strikethrough)=> {
+                        ref_parser.ref_text.push_str("~~");
+                        ref_parser.transition(RefParserState::ExpectRefTextOrCloseBracket);
+                    }
                     _ => {
                         ref_parser.transition(RefParserState::Resetting);
                     }
@@ -563,6 +577,16 @@ impl<'a> Exporter<'a> {
                     }
                     Event::Text(text) => {
                         ref_parser.ref_text.push_str(&text);
+                    }
+                    Event::Start(Tag::Emphasis) | Event::End(TagEnd::Emphasis) => {
+                        ref_parser.ref_text.push('*');
+
+                    }
+                    Event::Start(Tag::Strong) | Event::End(TagEnd::Strong)=> {
+                        ref_parser.ref_text.push_str("**");
+                    }
+                    Event::Start(Tag::Strikethrough) | Event::End(TagEnd::Strikethrough)=> {
+                        ref_parser.ref_text.push_str("~~");
                     }
                     _ => {
                         ref_parser.transition(RefParserState::Resetting);
