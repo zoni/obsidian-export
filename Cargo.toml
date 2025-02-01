@@ -42,7 +42,7 @@ filetime = "0.2.23"
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
-rstest = "0.23.0"
+rstest = "0.24.0"
 tempfile = "3.10.1"
 walkdir = "2.5.0"
 
