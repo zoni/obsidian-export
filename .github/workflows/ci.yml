@@ -98,7 +98,7 @@ jobs:
         with:
           binstall: "cargo-tarpaulin"
       - run: cargo tarpaulin --out Html
-      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+      - uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4
         with:
           name: tarpaulin-report
           path: tarpaulin-report.html
