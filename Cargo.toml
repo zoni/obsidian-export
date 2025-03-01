@@ -41,10 +41,10 @@ unicode-normalization = "0.1.23"
 filetime = "0.2.23"
 
 [dev-dependencies]
-pretty_assertions = "1.4.0"
-rstest = "0.24.0"
-tempfile = "3.10.1"
-walkdir = "2.5.0"
+pretty_assertions = "=1.4.0"
+rstest = "=0.24.0"
+tempfile = "=3.10.1"
+walkdir = "=2.5.0"
 
 # The profile that 'cargo dist' will build with
 [profile.dist]
