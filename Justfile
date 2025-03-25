@@ -1,4 +1,4 @@
-towncrier_cmd := "pipx run towncrier==24.8.0"
+towncrier_cmd := "uvx towncrier==24.8.0"
 
 _default:
     @{{just_executable()}} --choose
