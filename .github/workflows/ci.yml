@@ -62,7 +62,7 @@ jobs:
         with:
           rust-cache-shared-key: "base"
 
-      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5
+      - uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5
       - name: set PYVERSION
         run: echo "PYVERSION=$(python --version | tr ' ' '-')" >> $GITHUB_ENV
 
