@@ -33,7 +33,7 @@ It supports most but not all of Obsidian's Markdown flavor.
 
 Pre-compiled binaries for all major platforms are available at <https://github.com/zoni/obsidian-export/releases>
 
-In addition to the installation scripts provided, these releases are also suitable for [installation with cargo-binstall](https://github.com/cargo-bins/cargo-binstall#readme).
+In addition to the installation scripts provided, these releases are also suitable for [installation with cargo-binstall][cargo-binstall].
 
 ## Building from source
 
@@ -118,7 +118,7 @@ In this mode, all notes under the source (the first argument) are considered par
 ## Character encodings
 
 At present, UTF-8 character encoding is assumed for all note text as well as filenames.
-All text and file handling performs [lossy conversion to Unicode strings](https://doc.rust-lang.org/std/string/struct.String.html#method.from_utf8_lossy).
+All text and file handling performs [lossy conversion to Unicode strings][from_utf8_lossy].
 
 Use of non-UTF8 encodings may lead to issues like incorrect text replacement and failure to find linked notes.
 While this may change in the future, there are no plans to change this behavior in the short term.
@@ -181,7 +181,7 @@ Using this mode, if a note is encountered for a second time while processing the
 
 ## Relative links with Hugo
 
-The [Hugo] static site generator [does not support relative links to files](https://notes.nick.groenen.me/notes/relative-linking-in-hugo/).
+The [Hugo] static site generator [does not support relative links to files][hugo-relative-linking].
 Instead, it expects you to link to other pages using the [`ref` and `relref` shortcodes].
 
 As a result of this, notes that have been exported from Obsidian using obsidian-export do not work out of the box because Hugo doesn't resolve these links correctly.
@@ -243,9 +243,9 @@ With these hooks in place, links to both notes as well as file attachments shoul
 
 # Library usage
 
-All of the functionality exposed by the `obsidian-export` CLI command is also accessible as a Rust library, exposed through the [`obsidian_export` crate](https://crates.io/crates/obsidian-export).
+All of the functionality exposed by the `obsidian-export` CLI command is also accessible as a Rust library, exposed through the [`obsidian_export` crate][obsidian-export-crates-io].
 
-To get started, visit the library documentation on [obsidian_export](https://docs.rs/obsidian-export/latest/obsidian_export/) and [obsidian_export::Exporter](https://docs.rs/obsidian-export/latest/obsidian_export/struct.Exporter.html).
+To get started, visit the library documentation on [obsidian_export][crate-docs] and [obsidian_export::Exporter][exporter-docs].
 
 
 # Contributing
@@ -269,9 +269,15 @@ For a list of releases and the changes with each version, please refer to the [C
 [Obsidian]: https://obsidian.md/
 [CommonMark]: https://commonmark.org/
 [gitignore]: https://git-scm.com/docs/gitignore
+[cargo-binstall]: https://github.com/cargo-bins/cargo-binstall#readme
 [Cargo]: https://doc.rust-lang.org/cargo/
+[from_utf8_lossy]: https://doc.rust-lang.org/std/string/struct.String.html#method.from_utf8_lossy
 [Hugo]: https://gohugo.io
+[hugo-relative-linking]: https://notes.nick.groenen.me/notes/relative-linking-in-hugo/
 [`ref` and `relref` shortcodes]: https://gohugo.io/content-management/cross-references/
 [Markdown Render Hooks]: https://gohugo.io/getting-started/configuration-markup#markdown-render-hooks
+[obsidian-export-crates-io]: https://crates.io/crates/obsidian-export
+[crate-docs]: https://docs.rs/obsidian-export/latest/obsidian_export/
+[exporter-docs]: https://docs.rs/obsidian-export/latest/obsidian_export/struct.Exporter.html
 [BSD-2-Clause Plus Patent License]: https://spdx.org/licenses/BSD-2-Clause-Patent.html
 [LICENSE]: LICENSE

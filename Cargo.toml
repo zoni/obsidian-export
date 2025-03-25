@@ -1,6 +1,6 @@
 [package]
 name = "obsidian-export"
-version = "24.11.0"
+version = "25.3.0"
 authors = ["Nick Groenen <nick@groenen.me>"]
 edition = "2018"
 license = "BSD-2-Clause-Patent"

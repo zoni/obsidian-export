@@ -2,6 +2,20 @@
 
 <!-- towncrier release notes start -->
 
+## [25.3.0](https://github.com/zoni/obsidian-export/tree/25.3.0) - 2025-03-25
+
+### Changes
+
+- Support Github-Flavored-Markdown
+
+  The Github-Flavored-Markdown extension is now enabled in the markdown parser.
+  This ensures Obsidian callouts don't end up mangled by having escaping added to them. ([#328](https://github.com/zoni/obsidian-export/issues/328), [#330](https://github.com/zoni/obsidian-export/issues/330))
+
+### Miscellaneous
+
+- Dependency updates
+
+
 ## [24.11.0](https://github.com/zoni/obsidian-export/tree/24.11.0) - 2024-11-23
 
 ### New Features
