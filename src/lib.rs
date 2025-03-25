@@ -486,7 +486,8 @@ impl<'a> Exporter<'a> {
             | Options::ENABLE_STRIKETHROUGH
             | Options::ENABLE_TASKLISTS
             | Options::ENABLE_MATH
-            | Options::ENABLE_YAML_STYLE_METADATA_BLOCKS;
+            | Options::ENABLE_YAML_STYLE_METADATA_BLOCKS
+            | Options::ENABLE_GFM;
 
         let mut ref_parser = RefParser::new();
         let mut events = vec![];
