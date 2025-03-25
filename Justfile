@@ -8,25 +8,14 @@ add-changelog:
     {{towncrier_cmd}} create --edit
     git add changelog.d
 
+# Display the changelog that would be generated on the next release
+preview-changelog:
+    {{towncrier_cmd}} build --draft --version $(just _get-next-version-number)
+
 # Create a new release
 make-new-release:
     #!/usr/bin/env bash
     set -euo pipefail
-
-    get_next_version_number() {
-        DATEPART=$(date +%y.%-m)
-        ITERATION=0
-
-        while true; do
-            VERSION_STRING="${DATEPART}.${ITERATION}"
-            if git rev-list "v$VERSION_STRING" > /dev/null 2>&1; then
-                ((ITERATION++))
-            else
-                echo "$VERSION_STRING"
-                return
-            fi
-        done
-    }
 
     git add .
     if ! git diff-index --quiet HEAD; then
@@ -34,7 +23,7 @@ make-new-release:
         exit 1
     fi
 
-    VERSION=$(get_next_version_number)
+    VERSION=$(just _get-next-version-number)
     COMMITMSG=$(mktemp --tmpdir commitmsg.XXXXXXXXXX)
     trap 'rm "$COMMITMSG"' EXIT
     set -x
@@ -64,3 +53,20 @@ make-new-release:
     printf "\n\nSuccessfully created release %s\n" "v${VERSION}"
     printf "\nYou'll probably want to continue with:\n"
     printf "\tgit push origin main %s\n" "v${VERSION}"
+
+_get-next-version-number:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    DATEPART=$(date +%y.%-m)
+    ITERATION=0
+
+    while true; do
+        VERSION_STRING="${DATEPART}.${ITERATION}"
+        if git rev-list "v$VERSION_STRING" > /dev/null 2>&1; then
+            ((ITERATION++))
+        else
+            printf "$VERSION_STRING"
+            exit
+        fi
+    done
