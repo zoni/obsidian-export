@@ -415,20 +415,29 @@ impl<'a> Exporter<'a> {
     }
 
     fn export_note(&self, src: &Path, dest: &Path) -> Result<()> {
-        match is_markdown_file(src) {
+        let output_file = match is_markdown_file(src) {
             true => self.parse_and_export_obsidian_note(src, dest),
             false => copy_file(src, dest),
         }
         .context(FileExportSnafu { path: src })?;
 
-        if self.preserve_mtime {
-            copy_mtime(src, dest).context(FileExportSnafu { path: src })?;
+        // Don't try to set mtime if the file was not exported
+        if let Some(dest) = output_file {
+            if self.preserve_mtime {
+                copy_mtime(src, &dest)?;
+            }
         }
 
         Ok(())
     }
 
-    fn parse_and_export_obsidian_note(&self, src: &Path, dest: &Path) -> Result<()> {
+    /// Parse an Obsidian note and export it to the destination path, applying
+    /// any configured postprocessors in the process.
+    ///
+    /// Because postprocessors may alter the destination path or prevent a note
+    /// from being exported at all, the inner `<Option<PathBuf>>` is used to
+    /// indicate whether the note was exported at all, and where.
+    fn parse_and_export_obsidian_note(&self, src: &Path, dest: &Path) -> Result<Option<PathBuf>> {
         let mut context = Context::new(src.to_path_buf(), dest.to_path_buf());
 
         let (frontmatter, mut markdown_events) = self.parse_obsidian_note(src, &context)?;
@@ -436,7 +445,7 @@ impl<'a> Exporter<'a> {
         for func in &self.postprocessors {
             match func(&mut context, &mut markdown_events) {
                 PostprocessorResult::StopHere => break,
-                PostprocessorResult::StopAndSkipNote => return Ok(()),
+                PostprocessorResult::StopAndSkipNote => return Ok(None),
                 PostprocessorResult::Continue => (),
             }
         }
@@ -462,7 +471,7 @@ impl<'a> Exporter<'a> {
             .context(WriteSnafu {
                 path: &context.destination,
             })?;
-        Ok(())
+        Ok(Some(context.destination))
     }
 
     #[allow(clippy::too_many_lines)]
@@ -811,8 +820,9 @@ fn create_file(dest: &Path) -> Result<File> {
             if err.kind() == ErrorKind::NotFound {
                 let parent = dest.parent().expect("file should have a parent directory");
                 fs::create_dir_all(parent)?;
+                return File::create(dest);
             }
-            File::create(dest)
+            Err(err)
         })
         .context(WriteSnafu { path: dest })?;
     Ok(file)
@@ -828,17 +838,22 @@ fn copy_mtime(src: &Path, dest: &Path) -> Result<()> {
     Ok(())
 }
 
-fn copy_file(src: &Path, dest: &Path) -> Result<()> {
+/// Copy a file from `src` to `dest`, creating parent directories if necessary.
+///
+/// The return signature looks a little convoluted but this is done to match
+/// that of [`Exporter::parse_and_export_obsidian_note`].
+fn copy_file(src: &Path, dest: &Path) -> Result<Option<PathBuf>> {
     fs::copy(src, dest)
         .or_else(|err| {
             if err.kind() == ErrorKind::NotFound {
                 let parent = dest.parent().expect("file should have a parent directory");
                 fs::create_dir_all(parent)?;
+                return fs::copy(src, dest);
             }
-            fs::copy(src, dest)
+            Err(err)
         })
         .context(WriteSnafu { path: dest })?;
-    Ok(())
+    Ok(Some(dest.to_path_buf()))
 }
 
 fn is_markdown_file(file: &Path) -> bool {

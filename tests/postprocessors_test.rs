@@ -255,6 +255,32 @@ fn test_softbreaks_to_hardbreaks() {
 }
 
 #[test]
+fn test_preserve_mtime_with_skipped_notes() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+    let mut exporter = Exporter::new(
+        PathBuf::from("tests/testdata/input/postprocessors"),
+        tmp_dir.path().to_path_buf(),
+    );
+
+    // Enable preserve_mtime and add a postprocessor that skips notes
+    exporter.preserve_mtime(true);
+    exporter.add_postprocessor(&|_ctx, _mdevents| PostprocessorResult::StopAndSkipNote);
+
+    // This should not panic or return an error, even though preserve_mtime is enabled
+    // and the postprocessor skips all notes (so no destination files are created)
+    exporter
+        .run()
+        .expect("exporter should not fail when preserve_mtime is used with skipped notes");
+
+    // Verify that no markdown files were created (since all were skipped)
+    let note_path = tmp_dir.path().join(PathBuf::from("Note.md"));
+    assert!(
+        !note_path.exists(),
+        "Note.md should not exist since it was skipped"
+    );
+}
+
+#[test]
 fn test_filter_by_tags() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
     let mut exporter = Exporter::new(
