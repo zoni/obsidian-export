@@ -247,7 +247,7 @@ pub struct Exporter<'a> {
     embed_postprocessors: Vec<&'a Postprocessor<'a>>,
 }
 
-impl<'a> fmt::Debug for Exporter<'a> {
+impl fmt::Debug for Exporter<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("WalkOptions")
             .field("root", &self.root)
@@ -1062,10 +1062,11 @@ mod tests {
     #[case("Note\u{41}\u{308}.md", "Note\u{E4}.md")]
     #[case("Note\u{41}\u{308}", "Note\u{E4}.md")]
     fn test_lookup_filename_in_vault(#[case] input: &str, #[case] expected: &str) {
+        let empty_path = PathBuf::new();
         let result = lookup_filename_in_vault(input, &VAULT);
         println!("Test input: {input:?}");
         println!("Expecting: {expected:?}");
-        println!("Got: {:?}", result.unwrap_or(&PathBuf::from("")));
+        println!("Got: {:?}", result.unwrap_or(&empty_path));
         assert_eq!(result, Some(&PathBuf::from(expected)));
     }
 }

@@ -69,7 +69,7 @@ impl RefParser {
     }
 }
 
-impl<'a> ObsidianNoteReference<'a> {
+impl ObsidianNoteReference<'_> {
     pub fn from_str(text: &str) -> ObsidianNoteReference<'_> {
         let captures = OBSIDIAN_NOTE_LINK_RE
             .captures(text)
@@ -90,18 +90,18 @@ impl<'a> ObsidianNoteReference<'a> {
     }
 }
 
-impl<'a> fmt::Display for ObsidianNoteReference<'a> {
+impl fmt::Display for ObsidianNoteReference<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let label = self.label.map_or_else(
-            || match (self.file, self.section) {
+        let label = if let Some(label) = self.label {
+            label.to_owned()
+        } else {
+            match (self.file, self.section) {
                 (Some(file), Some(section)) => format!("{file} > {section}"),
                 (Some(file), None) => file.to_owned(),
                 (None, Some(section)) => section.to_owned(),
-
-                _ => panic!("Reference exists without file or section!"),
-            },
-            ToString::to_string,
-        );
+                _ => return Err(fmt::Error),
+            }
+        };
         write!(f, "{label}")
     }
 }
@@ -200,6 +200,25 @@ mod tests {
                 section: Some("Heading"),
             }
             .display()
+        );
+    }
+
+    #[test]
+    fn test_display_error_case() {
+        use std::fmt::Write;
+
+        let reference = ObsidianNoteReference {
+            file: None,
+            label: None,
+            section: None,
+        };
+
+        let mut output = String::new();
+        let result = write!(&mut output, "{reference}");
+
+        assert!(
+            result.is_err(),
+            "Expected fmt::Error for reference with no file, label, or section"
         );
     }
 }

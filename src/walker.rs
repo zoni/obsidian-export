@@ -34,7 +34,7 @@ pub struct WalkOptions<'a> {
     pub filter_fn: Option<&'static FilterFn>,
 }
 
-impl<'a> fmt::Debug for WalkOptions<'a> {
+impl fmt::Debug for WalkOptions<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let filter_fn_fmt = match self.filter_fn {
             Some(_) => "<function set>",
@@ -49,7 +49,7 @@ impl<'a> fmt::Debug for WalkOptions<'a> {
     }
 }
 
-impl<'a> WalkOptions<'a> {
+impl WalkOptions<'_> {
     /// Create a new set of options using default values.
     #[must_use]
     pub fn new() -> Self {
@@ -80,7 +80,7 @@ impl<'a> WalkOptions<'a> {
     }
 }
 
-impl<'a> Default for WalkOptions<'a> {
+impl Default for WalkOptions<'_> {
     fn default() -> Self {
         Self::new()
     }
