@@ -108,96 +108,50 @@ impl fmt::Display for ObsidianNoteReference<'_> {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
 
-    #[test]
-    fn parse_note_refs_from_strings() {
+    #[rstest]
+    #[case("Just a note", Some("Just a note"), None, None)]
+    #[case("A note?", Some("A note?"), None, None)]
+    #[case("Note#with heading", Some("Note"), None, Some("with heading"))]
+    #[case("Note#Heading|Label", Some("Note"), Some("Label"), Some("Heading"))]
+    #[case("#Heading|Label", None, Some("Label"), Some("Heading"))]
+    fn parse_note_refs_from_strings(
+        #[case] input: &str,
+        #[case] expected_file: Option<&str>,
+        #[case] expected_label: Option<&str>,
+        #[case] expected_section: Option<&str>,
+    ) {
         assert_eq!(
-            ObsidianNoteReference::from_str("Just a note"),
+            ObsidianNoteReference::from_str(input),
             ObsidianNoteReference {
-                file: Some("Just a note"),
-                label: None,
-                section: None,
-            }
-        );
-        assert_eq!(
-            ObsidianNoteReference::from_str("A note?"),
-            ObsidianNoteReference {
-                file: Some("A note?"),
-                label: None,
-                section: None,
-            }
-        );
-        assert_eq!(
-            ObsidianNoteReference::from_str("Note#with heading"),
-            ObsidianNoteReference {
-                file: Some("Note"),
-                label: None,
-                section: Some("with heading"),
-            }
-        );
-        assert_eq!(
-            ObsidianNoteReference::from_str("Note#Heading|Label"),
-            ObsidianNoteReference {
-                file: Some("Note"),
-                label: Some("Label"),
-                section: Some("Heading"),
-            }
-        );
-        assert_eq!(
-            ObsidianNoteReference::from_str("#Heading|Label"),
-            ObsidianNoteReference {
-                file: None,
-                label: Some("Label"),
-                section: Some("Heading"),
+                file: expected_file,
+                label: expected_label,
+                section: expected_section,
             }
         );
     }
 
-    #[test]
-    fn test_display_of_note_refs() {
+    #[rstest]
+    #[case(Some("Note"), None, None, "Note")]
+    #[case(Some("Note"), None, Some("Heading"), "Note > Heading")]
+    #[case(None, None, Some("Heading"), "Heading")]
+    #[case(Some("Note"), Some("Label"), Some("Heading"), "Label")]
+    #[case(None, Some("Label"), Some("Heading"), "Label")]
+    fn test_display_of_note_refs(
+        #[case] file: Option<&str>,
+        #[case] label: Option<&str>,
+        #[case] section: Option<&str>,
+        #[case] expected: &str,
+    ) {
         assert_eq!(
-            "Note",
+            expected,
             ObsidianNoteReference {
-                file: Some("Note"),
-                label: None,
-                section: None,
-            }
-            .display()
-        );
-        assert_eq!(
-            "Note > Heading",
-            ObsidianNoteReference {
-                file: Some("Note"),
-                label: None,
-                section: Some("Heading"),
-            }
-            .display()
-        );
-        assert_eq!(
-            "Heading",
-            ObsidianNoteReference {
-                file: None,
-                label: None,
-                section: Some("Heading"),
-            }
-            .display()
-        );
-        assert_eq!(
-            "Label",
-            ObsidianNoteReference {
-                file: Some("Note"),
-                label: Some("Label"),
-                section: Some("Heading"),
-            }
-            .display()
-        );
-        assert_eq!(
-            "Label",
-            ObsidianNoteReference {
-                file: None,
-                label: Some("Label"),
-                section: Some("Heading"),
+                file,
+                section,
+                label,
             }
             .display()
         );
