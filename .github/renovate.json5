@@ -8,34 +8,34 @@
         ":preserveSemverRanges",
     ],
     dependencyDashboard: true,
-    "labels": ["dependencies"],
+    labels: ["dependencies"],
     lockFileMaintenance: {
         enabled: true,
         automerge: true
     },
-    "customManagers": [
+    customManagers: [
       {
-        "customType": "regex",
-        "managerFilePatterns": ["rust-toolchain.toml"],
-        "matchStrings": [
+        customType: "regex",
+        managerFilePatterns: ["rust-toolchain.toml"],
+        matchStrings: [
           "channel\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+(\\.\\d+)?)\""
         ],
-        "depNameTemplate": "rust",
-        "packageNameTemplate": "rust-lang/rust",
-        "datasourceTemplate": "github-releases"
+        depNameTemplate: "rust",
+        packageNameTemplate: "rust-lang/rust",
+        datasourceTemplate: "github-releases"
       },
       {
-        "customType": "regex",
-        "managerFilePatterns": ["Justfile"],
-        "matchStrings": [
+        customType: "regex",
+        managerFilePatterns: ["Justfile"],
+        matchStrings: [
           // https://regex101.com/r/vOmY6R/1
           // Matching on word boundaries (\b) around start and end ensures we
           // match variations like "towncrier==1.2.3" as well as "pipx run
           // towncrier==1.2.3", adding some future proofness.
           "\".*\\btowncrier==(?<currentValue>.+?)\\b\""
         ],
-        "depNameTemplate": "towncrier",
-        "datasourceTemplate": "pypi"
+        depNameTemplate: "towncrier",
+        datasourceTemplate: "pypi"
       },
     ],
     packageRules: [
