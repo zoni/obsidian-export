@@ -16,7 +16,7 @@
     "customManagers": [
       {
         "customType": "regex",
-        "fileMatch": ["^rust-toolchain\\.toml?$"],
+        "managerFilePatterns": ["rust-toolchain.toml"],
         "matchStrings": [
           "channel\\s*=\\s*\"(?<currentValue>\\d+\\.\\d+(\\.\\d+)?)\""
         ],
@@ -26,7 +26,7 @@
       },
       {
         "customType": "regex",
-        "fileMatch": ["^Justfile$"],
+        "managerFilePatterns": ["Justfile"],
         "matchStrings": [
           // https://regex101.com/r/vOmY6R/1
           // Matching on word boundaries (\b) around start and end ensures we
