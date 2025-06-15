@@ -31,3 +31,7 @@ publish-jobs = ["./publish-crate"]
 install-path = "CARGO_HOME"
 # Whether to install an updater program
 install-updater = false
+
+[dist.github-custom-runners]
+# https://github.com/axodotdev/cargo-dist/issues/1760
+global = "ubuntu-22.04"
