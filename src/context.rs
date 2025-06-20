@@ -89,7 +89,7 @@ impl Context {
     /// Return the note depth (nesting level) for this context.
     #[inline]
     #[must_use]
-    pub fn note_depth(&self) -> usize {
+    pub const fn note_depth(&self) -> usize {
         self.file_tree.len()
     }
 

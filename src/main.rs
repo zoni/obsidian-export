@@ -147,7 +147,7 @@ fn main() {
                 _ => eprintln!("Error: {:?}", eyre!(err)),
             },
             _ => eprintln!("Error: {:?}", eyre!(err)),
-        };
+        }
         std::process::exit(1);
-    };
+    }
 }

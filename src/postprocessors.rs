@@ -39,11 +39,11 @@ fn filter_by_tags_(
 ) -> PostprocessorResult {
     let skip = skip_tags
         .iter()
-        .any(|tag| tags.contains(&Value::String(tag.to_string())));
+        .any(|tag| tags.contains(&Value::String(tag.clone())));
     let include = only_tags.is_empty()
         || only_tags
             .iter()
-            .any(|tag| tags.contains(&Value::String(tag.to_string())));
+            .any(|tag| tags.contains(&Value::String(tag.clone())));
 
     if skip || !include {
         PostprocessorResult::StopAndSkipNote

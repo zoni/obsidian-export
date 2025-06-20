@@ -277,7 +277,7 @@ fn test_filter_by_tags() {
         let entry = entry.unwrap();
         if entry.metadata().unwrap().is_dir() {
             continue;
-        };
+        }
         let filename = entry.file_name().to_string_lossy().into_owned();
         let expected = read_to_string(entry.path()).unwrap_or_else(|_| {
             panic!(

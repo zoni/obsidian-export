@@ -58,7 +58,7 @@ impl RefParser {
         }
     }
 
-    pub fn transition(&mut self, new_state: RefParserState) {
+    pub const fn transition(&mut self, new_state: RefParserState) {
         self.state = new_state;
     }
 

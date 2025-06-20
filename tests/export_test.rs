@@ -31,7 +31,7 @@ fn test_main_variants_with_default_options() {
         let entry = entry.unwrap();
         if entry.metadata().unwrap().is_dir() {
             continue;
-        };
+        }
         let filename = entry.file_name().to_string_lossy().into_owned();
         let expected = read_to_string(entry.path()).unwrap_or_else(|_| {
             panic!(
@@ -418,7 +418,7 @@ fn test_non_ascii_filenames() {
         let entry = entry.unwrap();
         if entry.metadata().unwrap().is_dir() {
             continue;
-        };
+        }
         let filename = entry.file_name().to_string_lossy().into_owned();
         let expected = read_to_string(entry.path()).unwrap_or_else(|_| {
             panic!(

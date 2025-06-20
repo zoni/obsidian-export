@@ -305,13 +305,13 @@ impl<'a> Exporter<'a> {
     }
 
     /// Set the [`WalkOptions`] to be used for this exporter.
-    pub fn walk_options(&mut self, options: WalkOptions<'a>) -> &mut Self {
+    pub const fn walk_options(&mut self, options: WalkOptions<'a>) -> &mut Self {
         self.walk_options = options;
         self
     }
 
     /// Set the [`FrontmatterStrategy`] to be used for this exporter.
-    pub fn frontmatter_strategy(&mut self, strategy: FrontmatterStrategy) -> &mut Self {
+    pub const fn frontmatter_strategy(&mut self, strategy: FrontmatterStrategy) -> &mut Self {
         self.frontmatter_strategy = strategy;
         self
     }
@@ -325,7 +325,7 @@ impl<'a> Exporter<'a> {
     ///
     /// When `recursive` is false, if a note is encountered for a second time while processing the
     /// original note, instead of embedding it again a link to the note is inserted instead.
-    pub fn process_embeds_recursively(&mut self, recursive: bool) -> &mut Self {
+    pub const fn process_embeds_recursively(&mut self, recursive: bool) -> &mut Self {
         self.process_embeds_recursively = recursive;
         self
     }
@@ -334,7 +334,7 @@ impl<'a> Exporter<'a> {
     ///
     /// When `preserve` is true, the modified time of exported files will be set to the modified
     /// time of the source file.
-    pub fn preserve_mtime(&mut self, preserve: bool) -> &mut Self {
+    pub const fn preserve_mtime(&mut self, preserve: bool) -> &mut Self {
         self.preserve_mtime = preserve;
         self
     }
@@ -535,7 +535,7 @@ impl<'a> Exporter<'a> {
                             events.push(event);
                             buffer.clear();
                         },
-                    };
+                    }
                 }
                 RefParserState::ExpectSecondOpenBracket => match event {
                     Event::Text(CowStr::Borrowed("[")) => {
