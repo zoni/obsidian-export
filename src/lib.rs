@@ -1022,6 +1022,8 @@ fn tag_to_owned<'a>(tag: Tag<'_>) -> Tag<'a> {
         Tag::DefinitionList => Tag::DefinitionList,
         Tag::DefinitionListTitle => Tag::DefinitionListTitle,
         Tag::DefinitionListDefinition => Tag::DefinitionListDefinition,
+        Tag::Subscript => Tag::Subscript,
+        Tag::Superscript => Tag::Superscript,
     }
 }
 
