@@ -414,6 +414,7 @@ impl<'a> Exporter<'a> {
         Ok(())
     }
 
+    #[allow(clippy::shadow_unrelated)]
     fn export_note(&self, src: &Path, dest: &Path) -> Result<()> {
         let output_file = match is_markdown_file(src) {
             true => self.parse_and_export_obsidian_note(src, dest),
