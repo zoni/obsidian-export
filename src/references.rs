@@ -8,6 +8,7 @@ static OBSIDIAN_NOTE_LINK_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 /// `ObsidianNoteReference` represents the structure of a `[[note]]` or `![[embed]]` reference.
 pub struct ObsidianNoteReference<'a> {
     /// The file (note name or partial path) being referenced.
@@ -70,6 +71,7 @@ impl RefParser {
 }
 
 impl ObsidianNoteReference<'_> {
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(text: &str) -> ObsidianNoteReference<'_> {
         let captures = OBSIDIAN_NOTE_LINK_RE
             .captures(text)
@@ -85,6 +87,7 @@ impl ObsidianNoteReference<'_> {
         }
     }
 
+    #[must_use]
     pub fn display(&self) -> String {
         format!("{self}")
     }

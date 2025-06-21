@@ -22,7 +22,8 @@ use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use pulldown_cmark::{CodeBlockKind, CowStr, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 use pulldown_cmark_to_cmark::cmark_with_options;
 use rayon::prelude::*;
-use references::{ObsidianNoteReference, RefParser, RefParserState, RefType};
+pub use references::ObsidianNoteReference;
+use references::{RefParser, RefParserState, RefType};
 use slug::slugify;
 use snafu::{ResultExt, Snafu};
 use unicode_normalization::UnicodeNormalization;
@@ -131,6 +132,151 @@ pub type MarkdownEvents<'a> = Vec<Event<'a>>;
 /// ```
 pub type Postprocessor<'f> =
     dyn Fn(&mut Context, &mut MarkdownEvents<'_>) -> PostprocessorResult + Send + Sync + 'f;
+
+/// A function that handles missing note references.
+///
+/// This function is called when a referenced note cannot be found in the vault.
+///
+/// It should return the markdown events to insert in place of the missing reference.
+/// Return an empty vector to skip the reference entirely.
+///
+/// # Examples
+///
+/// ## Skip missing references entirely
+///
+/// ```
+/// use std::path::PathBuf;
+///
+/// use obsidian_export::Exporter;
+/// # use tempfile::TempDir;
+///
+/// # let tmp_dir = TempDir::new().expect("failed to make tempdir");
+/// # let source = PathBuf::from("tests/testdata/input/postprocessors");
+/// # let destination = tmp_dir.path().to_path_buf();
+/// let mut exporter = Exporter::new(source, destination);
+///
+/// exporter.set_missing_note_handler(&|_context, _reference, _is_embed| {
+///     vec![] // No output - reference is completely removed
+/// });
+/// ```
+///
+/// ## Replace with emphasized text
+///
+/// ```
+/// use std::path::PathBuf;
+///
+/// use obsidian_export::pulldown_cmark::{CowStr, Event, Tag, TagEnd};
+/// use obsidian_export::Exporter;
+/// # use tempfile::TempDir;
+///
+/// # let tmp_dir = TempDir::new().expect("failed to make tempdir");
+/// # let source = PathBuf::from("tests/testdata/input/postprocessors");
+/// # let destination = tmp_dir.path().to_path_buf();
+/// let mut exporter = Exporter::new(source, destination);
+///
+/// exporter.set_missing_note_handler(&|_context, reference, _is_embed| {
+///     vec![
+///         Event::Start(Tag::Emphasis),
+///         Event::Text(CowStr::from(reference.display())),
+///         Event::End(TagEnd::Emphasis),
+///     ]
+/// });
+/// ```
+///
+/// ## Create a link to external resource
+///
+/// ```
+/// use std::path::PathBuf;
+///
+/// use obsidian_export::pulldown_cmark::{CowStr, Event, LinkType, Tag, TagEnd};
+/// use obsidian_export::Exporter;
+/// # use tempfile::TempDir;
+///
+/// # let tmp_dir = TempDir::new().expect("failed to make tempdir");
+/// # let source = PathBuf::from("tests/testdata/input/postprocessors");
+/// # let destination = tmp_dir.path().to_path_buf();
+/// let mut exporter = Exporter::new(source, destination);
+///
+/// exporter.set_missing_note_handler(&|_context, reference, _is_embed| {
+///     let url = format!(
+///         "https://example.com/search?q={}",
+///         reference.file.unwrap_or("unknown")
+///     );
+///     vec![
+///         Event::Start(Tag::Link {
+///             link_type: LinkType::Inline,
+///             dest_url: CowStr::from(url),
+///             title: CowStr::from(""),
+///             id: CowStr::from(""),
+///         }),
+///         Event::Text(CowStr::from(reference.display())),
+///         Event::End(TagEnd::Link),
+///     ]
+/// });
+/// ```
+///
+/// ## Different behavior for embeds vs links
+///
+/// ```
+/// use std::path::PathBuf;
+///
+/// use obsidian_export::pulldown_cmark::{CowStr, Event, Tag, TagEnd};
+/// use obsidian_export::Exporter;
+/// # use tempfile::TempDir;
+///
+/// # let tmp_dir = TempDir::new().expect("failed to make tempdir");
+/// # let source = PathBuf::from("tests/testdata/input/postprocessors");
+/// # let destination = tmp_dir.path().to_path_buf();
+/// let mut exporter = Exporter::new(source, destination);
+///
+/// exporter.set_missing_note_handler(&|_context, reference, is_embed| {
+///     if is_embed {
+///         // Skip embeds entirely
+///         vec![]
+///     } else {
+///         // Show links as warnings
+///         vec![
+///             Event::Start(Tag::Strong),
+///             Event::Text(CowStr::from("WARNING: Missing link ".to_owned())),
+///             Event::Text(CowStr::from(reference.file.unwrap_or("unknown").to_owned())),
+///             Event::End(TagEnd::Strong),
+///         ]
+///     }
+/// });
+/// ```
+pub type MissingNoteHandler =
+    dyn Fn(&Context, &ObsidianNoteReference<'_>, bool) -> MarkdownEvents<'static> + Send + Sync;
+
+/// Default handler for missing note references.
+///
+/// This function provides the original behavior: prints warnings to stderr and
+/// returns emphasized text for links, empty vector for embeds.
+fn default_missing_note_handler(
+    context: &Context,
+    reference: &ObsidianNoteReference<'_>,
+    is_embed: bool,
+) -> MarkdownEvents<'static> {
+    if is_embed {
+        eprintln!(
+            "Warning: Unable to find embedded note\n\tReference: '{}'\n\tSource: '{}'\n",
+            reference.file.unwrap_or("<current file>"),
+            context.current_file().display(),
+        );
+        vec![]
+    } else {
+        eprintln!(
+            "Warning: Unable to find referenced note\n\tReference: '{}'\n\tSource: '{}'\n",
+            reference.file.unwrap_or("<current file>"),
+            context.current_file().display(),
+        );
+        vec![
+            Event::Start(Tag::Emphasis),
+            Event::Text(CowStr::from(reference.display())),
+            Event::End(TagEnd::Emphasis),
+        ]
+    }
+}
+
 type Result<T, E = ExportError> = std::result::Result<T, E>;
 
 const PERCENTENCODE_CHARS: &AsciiSet = &CONTROLS.add(b' ').add(b'(').add(b')').add(b'%').add(b'?');
@@ -245,6 +391,7 @@ pub struct Exporter<'a> {
     preserve_mtime: bool,
     postprocessors: Vec<&'a Postprocessor<'a>>,
     embed_postprocessors: Vec<&'a Postprocessor<'a>>,
+    missing_note_handler: &'a MissingNoteHandler,
 }
 
 impl fmt::Debug for Exporter<'_> {
@@ -271,6 +418,7 @@ impl fmt::Debug for Exporter<'_> {
                     self.embed_postprocessors.len()
                 ),
             )
+            .field("missing_note_handler", &"<missing note handler>")
             .finish()
     }
 }
@@ -291,6 +439,7 @@ impl<'a> Exporter<'a> {
             vault_contents: None,
             postprocessors: vec![],
             embed_postprocessors: vec![],
+            missing_note_handler: &default_missing_note_handler,
         }
     }
 
@@ -349,6 +498,12 @@ impl<'a> Exporter<'a> {
     /// Append a function to the chain of [postprocessors][Postprocessor] for embeds.
     pub fn add_embed_postprocessor(&mut self, processor: &'a Postprocessor<'_>) -> &mut Self {
         self.embed_postprocessors.push(processor);
+        self
+    }
+
+    /// Set a custom handler for missing note references.
+    pub fn set_missing_note_handler(&mut self, handler: &'a MissingNoteHandler) -> &mut Self {
+        self.missing_note_handler = handler;
         self
     }
 
@@ -659,21 +814,13 @@ impl<'a> Exporter<'a> {
             Some(file) => lookup_filename_in_vault(file, self.vault_contents.as_ref().unwrap()),
 
             // If we have None file it is either to a section or id within the same file and thus
-            // the current embed logic will fail, recurssing until it reaches it's limit.
+            // the current embed logic will fail, recursing until it reaches it's limit.
             // For now we just bail early.
             None => return Ok(self.make_link_to_file(note_ref, context)),
         };
 
         if path.is_none() {
-            // TODO: Extract into configurable function.
-            eprintln!(
-                "Warning: Unable to find embedded note\n\tReference: '{}'\n\tSource: '{}'\n",
-                note_ref
-                    .file
-                    .unwrap_or_else(|| context.current_file().to_str().unwrap()),
-                context.current_file().display(),
-            );
-            return Ok(vec![]);
+            return Ok((self.missing_note_handler)(context, &note_ref, true));
         }
 
         let path = path.unwrap();
@@ -748,19 +895,7 @@ impl<'a> Exporter<'a> {
         );
 
         if target_file.is_none() {
-            // TODO: Extract into configurable function.
-            eprintln!(
-                "Warning: Unable to find referenced note\n\tReference: '{}'\n\tSource: '{}'\n",
-                reference
-                    .file
-                    .unwrap_or_else(|| context.current_file().to_str().unwrap()),
-                context.current_file().display(),
-            );
-            return vec![
-                Event::Start(Tag::Emphasis),
-                Event::Text(CowStr::from(reference.display())),
-                Event::End(TagEnd::Emphasis),
-            ];
+            return (self.missing_note_handler)(context, &reference, false);
         }
         let target_file = target_file.unwrap();
         // We use root_file() rather than current_file() here to make sure links are always
