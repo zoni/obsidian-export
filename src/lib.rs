@@ -198,15 +198,13 @@ pub type Postprocessor<'f> =
 /// let mut exporter = Exporter::new(source, destination);
 ///
 /// exporter.set_missing_note_handler(&|_context, reference, _is_embed| {
-///     let url = format!(
-///         "https://example.com/search?q={}",
-///         reference.file.unwrap_or("unknown")
-///     );
+///     let url = format!("https://example.com/search?q={}", reference.display());
+///     let title = format!("Search for {}", reference.display());
 ///     vec![
 ///         Event::Start(Tag::Link {
 ///             link_type: LinkType::Inline,
 ///             dest_url: CowStr::from(url),
-///             title: CowStr::from(""),
+///             title: CowStr::from(title),
 ///             id: CowStr::from(""),
 ///         }),
 ///         Event::Text(CowStr::from(reference.display())),
@@ -238,14 +236,20 @@ pub type Postprocessor<'f> =
 ///         vec![
 ///             Event::Start(Tag::Strong),
 ///             Event::Text(CowStr::from("WARNING: Missing link ".to_owned())),
-///             Event::Text(CowStr::from(reference.file.unwrap_or("unknown").to_owned())),
+///             Event::Text(CowStr::from(
+///                 reference
+///                     .file
+///                     .as_deref()
+///                     .unwrap_or(&reference.display())
+///                     .to_owned(),
+///             )),
 ///             Event::End(TagEnd::Strong),
 ///         ]
 ///     }
 /// });
 /// ```
 pub type MissingNoteHandler =
-    dyn Fn(&Context, &ObsidianNoteReference<'_>, bool) -> MarkdownEvents<'static> + Send + Sync;
+    dyn Fn(&Context, &ObsidianNoteReference, bool) -> MarkdownEvents<'static> + Send + Sync;
 
 /// Default handler for missing note references.
 ///
@@ -253,20 +257,20 @@ pub type MissingNoteHandler =
 /// returns emphasized text for links, empty vector for embeds.
 fn default_missing_note_handler(
     context: &Context,
-    reference: &ObsidianNoteReference<'_>,
+    reference: &ObsidianNoteReference,
     is_embed: bool,
 ) -> MarkdownEvents<'static> {
     if is_embed {
         eprintln!(
             "Warning: Unable to find embedded note\n\tReference: '{}'\n\tSource: '{}'\n",
-            reference.file.unwrap_or("<current file>"),
+            reference.file.as_deref().unwrap_or(&reference.display()),
             context.current_file().display(),
         );
         vec![]
     } else {
         eprintln!(
             "Warning: Unable to find referenced note\n\tReference: '{}'\n\tSource: '{}'\n",
-            reference.file.unwrap_or("<current file>"),
+            reference.file.as_deref().unwrap_or(&reference.display()),
             context.current_file().display(),
         );
         vec![
@@ -358,6 +362,12 @@ pub enum ExportError {
         path: PathBuf,
         #[snafu(source(from(serde_yaml::Error, Box::new)))]
         source: Box<serde_yaml::Error>,
+    },
+
+    #[snafu(display("Failed to parse Obsidian note reference in '{}'", path.display()))]
+    NoteReferenceParseError {
+        path: PathBuf,
+        source: references::ParseError,
     },
 }
 
@@ -760,12 +770,8 @@ impl<'a> Exporter<'a> {
                 RefParserState::ExpectFinalCloseBracket => match event {
                     Event::Text(CowStr::Borrowed("]")) => match ref_parser.ref_type {
                         Some(RefType::Link) => {
-                            let mut elements = self.make_link_to_file(
-                                ObsidianNoteReference::from_str(
-                                    ref_parser.ref_text.clone().as_ref()
-                                ),
-                                context,
-                            );
+                            let note_ref = ref_parser.ref_text.parse().context(NoteReferenceParseSnafu { path })?;
+                            let mut elements = self.make_link_to_file(&note_ref, context);
                             events.append(&mut elements);
                             buffer.clear();
                             ref_parser.transition(RefParserState::Resetting);
@@ -808,15 +814,19 @@ impl<'a> Exporter<'a> {
         link_text: &'a str,
         context: &'a Context,
     ) -> Result<MarkdownEvents<'b>> {
-        let note_ref = ObsidianNoteReference::from_str(link_text);
-
-        let path = match note_ref.file {
+        let note_ref =
+            link_text
+                .parse::<ObsidianNoteReference>()
+                .context(NoteReferenceParseSnafu {
+                    path: context.current_file(),
+                })?;
+        let path = match note_ref.file.as_deref() {
             Some(file) => lookup_filename_in_vault(file, self.vault_contents.as_ref().unwrap()),
 
             // If we have None file it is either to a section or id within the same file and thus
             // the current embed logic will fail, recursing until it reaches it's limit.
             // For now we just bail early.
-            None => return Ok(self.make_link_to_file(note_ref, context)),
+            None => return Ok(self.make_link_to_file(&note_ref, context)),
         };
 
         if path.is_none() {
@@ -830,7 +840,7 @@ impl<'a> Exporter<'a> {
         if !self.process_embeds_recursively && context.file_tree().contains(path) {
             return Ok([
                 vec![Event::Text(CowStr::Borrowed("→ "))],
-                self.make_link_to_file(note_ref, &child_context),
+                self.make_link_to_file(&note_ref, &child_context),
             ]
             .concat());
         }
@@ -839,7 +849,7 @@ impl<'a> Exporter<'a> {
             Some("md") => {
                 let (frontmatter, mut events) = self.parse_obsidian_note(path, &child_context)?;
                 child_context.frontmatter = frontmatter;
-                if let Some(section) = note_ref.section {
+                if let Some(section) = note_ref.section.as_deref() {
                     events = reduce_to_section(events, section);
                 }
                 for func in &self.embed_postprocessors {
@@ -856,7 +866,7 @@ impl<'a> Exporter<'a> {
                 events
             }
             Some("png" | "jpg" | "jpeg" | "gif" | "webp" | "svg") => {
-                self.make_link_to_file(note_ref, &child_context)
+                self.make_link_to_file(&note_ref, &child_context)
                     .into_iter()
                     .map(|event| match event {
                         // make_link_to_file returns a link to a file. With this we turn the link
@@ -879,23 +889,23 @@ impl<'a> Exporter<'a> {
                     })
                     .collect()
             }
-            _ => self.make_link_to_file(note_ref, &child_context),
+            _ => self.make_link_to_file(&note_ref, &child_context),
         };
         Ok(events)
     }
 
     fn make_link_to_file<'c>(
         &self,
-        reference: ObsidianNoteReference<'_>,
+        reference: &ObsidianNoteReference,
         context: &Context,
     ) -> MarkdownEvents<'c> {
-        let target_file = reference.file.map_or_else(
+        let target_file = reference.file.as_deref().map_or_else(
             || Some(context.current_file()),
             |file| lookup_filename_in_vault(file, self.vault_contents.as_ref().unwrap()),
         );
 
         if target_file.is_none() {
-            return (self.missing_note_handler)(context, &reference, false);
+            return (self.missing_note_handler)(context, reference, false);
         }
         let target_file = target_file.unwrap();
         // We use root_file() rather than current_file() here to make sure links are always
@@ -913,7 +923,7 @@ impl<'a> Exporter<'a> {
         let rel_link = rel_link.to_string_lossy();
         let mut link = utf8_percent_encode(&rel_link, PERCENTENCODE_CHARS).to_string();
 
-        if let Some(section) = reference.section {
+        if let Some(section) = reference.section.as_deref() {
             link.push('#');
             link.push_str(&slugify(section));
         }

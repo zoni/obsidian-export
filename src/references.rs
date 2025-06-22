@@ -1,23 +1,32 @@
 use std::fmt;
+use std::str::FromStr;
 use std::sync::LazyLock;
 
 use regex::Regex;
+use snafu::Snafu;
 
 static OBSIDIAN_NOTE_LINK_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^(?P<file>[^#|]+)??(#(?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap()
 });
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 /// `ObsidianNoteReference` represents the structure of a `[[note]]` or `![[embed]]` reference.
-pub struct ObsidianNoteReference<'a> {
+pub struct ObsidianNoteReference {
     /// The file (note name or partial path) being referenced.
     /// This will be None in the case that the reference is to a section within the same document
-    pub file: Option<&'a str>,
+    pub file: Option<String>,
     /// If specific, a specific section/heading being referenced.
-    pub section: Option<&'a str>,
+    pub section: Option<String>,
     /// If specific, the custom label/text which was specified.
-    pub label: Option<&'a str>,
+    pub label: Option<String>,
+}
+
+#[derive(Debug, Snafu)]
+#[snafu(display("Malformed note reference: {}", reference_text))]
+/// This is the error type returned when a string cannot be parsed into an `ObsidianNoteReference`.
+pub struct ParseError {
+    reference_text: String,
 }
 
 #[derive(PartialEq, Eq)]
@@ -70,38 +79,50 @@ impl RefParser {
     }
 }
 
-impl ObsidianNoteReference<'_> {
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str(text: &str) -> ObsidianNoteReference<'_> {
-        let captures = OBSIDIAN_NOTE_LINK_RE
-            .captures(text)
-            .expect("note link regex didn't match - bad input?");
-        let file = captures.name("file").map(|v| v.as_str().trim());
-        let label = captures.name("label").map(|v| v.as_str());
-        let section = captures.name("section").map(|v| v.as_str().trim());
-
-        ObsidianNoteReference {
-            file,
-            section,
-            label,
-        }
-    }
-
+impl ObsidianNoteReference {
     #[must_use]
     pub fn display(&self) -> String {
         format!("{self}")
     }
 }
 
-impl fmt::Display for ObsidianNoteReference<'_> {
+impl FromStr for ObsidianNoteReference {
+    type Err = ParseError;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        let captures = OBSIDIAN_NOTE_LINK_RE
+            .captures(text)
+            .ok_or_else(|| ParseError {
+                reference_text: text.into(),
+            })?;
+
+        let file = captures
+            .name("file")
+            .map(|v| v.as_str().trim())
+            .filter(|s| !s.is_empty())
+            .map(ToString::to_string);
+        let label = captures.name("label").map(|v| v.as_str().to_owned());
+        let section = captures
+            .name("section")
+            .map(|v| v.as_str().trim().to_owned());
+
+        Ok(Self {
+            file,
+            section,
+            label,
+        })
+    }
+}
+
+impl fmt::Display for ObsidianNoteReference {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let label = if let Some(label) = self.label {
-            label.to_owned()
+        let label = if let Some(label) = &self.label {
+            label.clone()
         } else {
-            match (self.file, self.section) {
+            match (&self.file, &self.section) {
                 (Some(file), Some(section)) => format!("{file} > {section}"),
-                (Some(file), None) => file.to_owned(),
-                (None, Some(section)) => section.to_owned(),
+                (Some(file), None) => file.clone(),
+                (None, Some(section)) => section.clone(),
                 _ => return Err(fmt::Error),
             }
         };
@@ -128,11 +149,11 @@ mod tests {
         #[case] expected_section: Option<&str>,
     ) {
         assert_eq!(
-            ObsidianNoteReference::from_str(input),
+            input.parse::<ObsidianNoteReference>().unwrap(),
             ObsidianNoteReference {
-                file: expected_file,
-                label: expected_label,
-                section: expected_section,
+                file: expected_file.map(String::from),
+                label: expected_label.map(String::from),
+                section: expected_section.map(String::from),
             }
         );
     }
@@ -152,9 +173,9 @@ mod tests {
         assert_eq!(
             expected,
             ObsidianNoteReference {
-                file,
-                section,
-                label,
+                file: file.map(String::from),
+                section: section.map(String::from),
+                label: label.map(String::from),
             }
             .display()
         );

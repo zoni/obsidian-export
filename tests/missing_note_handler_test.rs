@@ -146,7 +146,7 @@ fn test_custom_missing_note_handler_create_external_links() {
     exporter.set_missing_note_handler(&|_context, reference, _is_embed| {
         let url = format!(
             "https://example.com/search?q={}",
-            reference.file.unwrap_or("unknown")
+            reference.file.as_deref().unwrap()
         );
         vec![
             Event::Start(Tag::Link {
@@ -184,8 +184,8 @@ fn test_missing_note_handler_with_aliased_references() {
 
     exporter.set_missing_note_handler(&|_context, reference, _is_embed| {
         // Verify reference parsing is correct
-        assert_eq!(reference.file, Some("missing-note"));
-        assert_eq!(reference.label, Some("Custom Label"));
+        assert_eq!(reference.file, Some("missing-note".to_owned()));
+        assert_eq!(reference.label, Some("Custom Label".to_owned()));
         assert_eq!(reference.display(), "Custom Label"); // display() should show the label when present
 
         vec![Event::Text(CowStr::from("REPLACED"))]
@@ -215,8 +215,8 @@ fn test_missing_note_handler_with_section_references() {
 
     exporter.set_missing_note_handler(&|_context, reference, _is_embed| {
         // Verify section reference parsing
-        assert_eq!(reference.file, Some("missing-note"));
-        assert_eq!(reference.section, Some("Section Name"));
+        assert_eq!(reference.file, Some("missing-note".to_owned()));
+        assert_eq!(reference.section, Some("Section Name".to_owned()));
         assert_eq!(reference.label, None);
 
         vec![Event::Text(CowStr::from("REPLACED"))]
@@ -272,9 +272,9 @@ fn test_missing_note_handler_complex_reference_parsing() {
 
     exporter.set_missing_note_handler(&|_context, reference, _is_embed| {
         // Verify complex reference parsing
-        assert_eq!(reference.file, Some("missing-note"));
-        assert_eq!(reference.section, Some("Section Name"));
-        assert_eq!(reference.label, Some("Custom Display Text"));
+        assert_eq!(reference.file, Some("missing-note".to_owned()));
+        assert_eq!(reference.section, Some("Section Name".to_owned()));
+        assert_eq!(reference.label, Some("Custom Display Text".to_owned()));
         assert_eq!(reference.display(), "Custom Display Text"); // Should show label when present
 
         vec![Event::Text(CowStr::from("REPLACED"))]
@@ -338,7 +338,7 @@ fn test_missing_note_handler_argument_order() {
     exporter.set_missing_note_handler(&|context, reference, is_embed| {
         // Verify we can access all three parameters in the expected order
         assert!(context.current_file().to_string_lossy().contains("test.md"));
-        assert_eq!(reference.file, Some("missing-note"));
+        assert_eq!(reference.file, Some("missing-note".to_owned()));
         assert!(!is_embed); // This is a link, not an embed
 
         vec![Event::Text(CowStr::from("ORDER_TEST_PASSED"))]
@@ -382,7 +382,7 @@ fn test_missing_note_handler_nested_embeds() {
         // The depth might be 1 if the child note is processed as a root note during embed
         // processing Let's just verify it's a positive depth and accept both 1 and 2
         assert!(context.note_depth() >= 1);
-        assert_eq!(reference.file, Some("missing-from-child"));
+        assert_eq!(reference.file, Some("missing-from-child".to_owned()));
         assert!(!is_embed); // This is a link, not an embed
 
         vec![Event::Text(CowStr::from("NESTED_REPLACED"))]
