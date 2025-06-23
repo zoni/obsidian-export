@@ -11,6 +11,7 @@ use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 use std::{fmt, str};
 
 pub use context::Context;
@@ -251,35 +252,38 @@ pub type Postprocessor<'f> =
 pub type MissingNoteHandler =
     dyn Fn(&Context, &ObsidianNoteReference, bool) -> MarkdownEvents<'static> + Send + Sync;
 
-/// Default handler for missing note references.
-///
-/// This function provides the original behavior: prints warnings to stderr and
-/// returns emphasized text for links, empty vector for embeds.
+/// Create the builtin handler for missing note references.
 fn default_missing_note_handler(
-    context: &Context,
-    reference: &ObsidianNoteReference,
-    is_embed: bool,
-) -> MarkdownEvents<'static> {
-    if is_embed {
-        eprintln!(
-            "Warning: Unable to find embedded note\n\tReference: '{}'\n\tSource: '{}'\n",
-            reference.file.as_deref().unwrap_or(&reference.display()),
-            context.current_file().display(),
-        );
-        vec![]
-    } else {
-        eprintln!(
-            "Warning: Unable to find referenced note\n\tReference: '{}'\n\tSource: '{}'\n",
-            reference.file.as_deref().unwrap_or(&reference.display()),
-            context.current_file().display(),
-        );
-        vec![
-            Event::Start(Tag::Emphasis),
-            Event::Text(CowStr::from(reference.display())),
-            Event::End(TagEnd::Emphasis),
-        ]
+) -> impl Fn(&Context, &ObsidianNoteReference, bool) -> MarkdownEvents<'static> {
+    move |context: &Context,
+          reference: &ObsidianNoteReference,
+          is_embed: bool|
+          -> MarkdownEvents<'static> {
+        if is_embed {
+            eprintln!(
+                "Warning: Unable to find embedded note\n\tReference: '{}'\n\tSource: '{}'\n",
+                reference.file.as_deref().unwrap_or(&reference.display()),
+                context.current_file().display(),
+            );
+            vec![]
+        } else {
+            eprintln!(
+                "Warning: Unable to find referenced note\n\tReference: '{}'\n\tSource: '{}'\n",
+                reference.file.as_deref().unwrap_or(&reference.display()),
+                context.current_file().display(),
+            );
+            vec![
+                Event::Start(Tag::Emphasis),
+                Event::Text(CowStr::from(reference.display())),
+                Event::End(TagEnd::Emphasis),
+            ]
+        }
     }
 }
+
+/// The default missing note handler, used when no custom handler is set.
+static DEFAULT_MISSING_NOTE_HANDLER: LazyLock<Box<MissingNoteHandler>> =
+    LazyLock::new(|| Box::new(default_missing_note_handler()));
 
 type Result<T, E = ExportError> = std::result::Result<T, E>;
 
@@ -449,7 +453,7 @@ impl<'a> Exporter<'a> {
             vault_contents: None,
             postprocessors: vec![],
             embed_postprocessors: vec![],
-            missing_note_handler: &default_missing_note_handler,
+            missing_note_handler: &**DEFAULT_MISSING_NOTE_HANDLER,
         }
     }
 
