@@ -6,6 +6,7 @@ use std::io::prelude::*;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
+use obsidian_export::postprocessors::parse_obsidian_comments;
 use obsidian_export::{ExportError, Exporter, FrontmatterStrategy};
 use pretty_assertions::assert_eq;
 use tempfile::TempDir;
@@ -458,4 +459,21 @@ fn test_same_filename_different_directories() {
 
     let actual = read_to_string(tmp_dir.path().join(PathBuf::from("Note.md"))).unwrap();
     assert_eq!(expected, actual);
+}
+
+#[test]
+fn test_parse_obsidian_comments() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+
+    let mut exporter = Exporter::new(
+        PathBuf::from("tests/testdata/input/comments/"),
+        tmp_dir.path().to_path_buf(),
+    );
+    exporter.add_postprocessor(&parse_obsidian_comments);
+    exporter.run().expect("exporter returned error");
+
+    assert_eq!(
+        read_to_string("tests/testdata/expected/comments/note.md").unwrap(),
+        read_to_string(tmp_dir.path().join(PathBuf::from("note.md"))).unwrap(),
+    );
 }
