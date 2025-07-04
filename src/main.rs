@@ -3,7 +3,9 @@ use std::path::PathBuf;
 
 use eyre::{eyre, Result};
 use gumdrop::Options;
-use obsidian_export::postprocessors::{filter_by_tags, softbreaks_to_hardbreaks};
+use obsidian_export::postprocessors::{
+    filter_by_tags, parse_obsidian_comments, softbreaks_to_hardbreaks,
+};
 use obsidian_export::{ExportError, Exporter, FrontmatterStrategy, WalkOptions};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -106,6 +108,8 @@ fn main() {
     exporter.process_embeds_recursively(!args.no_recursive_embeds);
     exporter.preserve_mtime(args.preserve_mtime);
     exporter.walk_options(walk_options);
+
+    exporter.add_postprocessor(&parse_obsidian_comments);
 
     if args.hard_linebreaks {
         exporter.add_postprocessor(&softbreaks_to_hardbreaks);

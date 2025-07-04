@@ -19,6 +19,62 @@ pub fn softbreaks_to_hardbreaks(
     PostprocessorResult::Continue
 }
 
+/// In addition to HTML comments "<!-- my comment -->", Obsidian syntax includes a second comment
+/// syntax "%% my comment %%". This function converts Obsidian-style comments to the standard HTML
+/// style.
+///
+/// Because this step is done when the document is already parsed from markdown, any embedded
+/// markup inside comments will be elided from the output.
+pub fn parse_obsidian_comments(
+    context: &mut Context,
+    events: &mut MarkdownEvents<'_>,
+) -> PostprocessorResult {
+    let mut in_comment = false;
+    let mut comment_acc = String::new();
+    let input = std::mem::take(events);
+    let mut output = MarkdownEvents::new();
+
+    for event in input {
+        match event {
+            Event::Text(s) => {
+                for (idx, text) in s.split("%%").enumerate() {
+                    if idx > 0 {
+                        if in_comment && !comment_acc.is_empty() {
+                            output.push(Event::InlineHtml(format!("<!--{comment_acc}-->").into()));
+                            comment_acc.clear();
+                        }
+
+                        in_comment = !in_comment;
+                    }
+
+                    if !text.is_empty() {
+                        if in_comment {
+                            comment_acc.push_str(text);
+                        } else {
+                            output.push(Event::Text(text.to_owned().into()));
+                        }
+                    }
+                }
+            }
+            _ => {
+                if !in_comment {
+                    output.push(event);
+                }
+            }
+        }
+    }
+
+    assert!(
+        !in_comment,
+        "Unmatched comment delimiter in {}",
+        context.destination.display()
+    );
+
+    std::mem::swap(events, &mut output);
+
+    PostprocessorResult::Continue
+}
+
 pub fn filter_by_tags(
     skip_tags: Vec<String>,
     only_tags: Vec<String>,
