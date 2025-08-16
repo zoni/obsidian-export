@@ -6,6 +6,7 @@ pub mod postprocessors;
 mod references;
 mod walker;
 
+use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -245,6 +246,7 @@ pub struct Exporter<'a> {
     preserve_mtime: bool,
     postprocessors: Vec<&'a Postprocessor<'a>>,
     embed_postprocessors: Vec<&'a Postprocessor<'a>>,
+    linked_attachments_only: bool,
 }
 
 impl fmt::Debug for Exporter<'_> {
@@ -291,6 +293,7 @@ impl<'a> Exporter<'a> {
             vault_contents: None,
             postprocessors: vec![],
             embed_postprocessors: vec![],
+            linked_attachments_only: false,
         }
     }
 
@@ -336,6 +339,12 @@ impl<'a> Exporter<'a> {
     /// time of the source file.
     pub const fn preserve_mtime(&mut self, preserve: bool) -> &mut Self {
         self.preserve_mtime = preserve;
+        self
+    }
+
+    /// Set whether non-markdown files should only be included if linked or embedded in a note.
+    pub fn linked_attachments_only(&mut self, linked_only: bool) -> &mut Self {
+        self.linked_attachments_only = linked_only;
         self
     }
 
@@ -409,7 +418,11 @@ impl<'a> Exporter<'a> {
                     .expect("file should always be nested under root")
                     .to_path_buf();
                 let destination = &self.destination.join(relative_path);
-                self.export_note(&file, destination)
+                if !self.linked_attachments_only || is_markdown_file(&file) {
+                    self.export_note(&file, destination)
+                } else {
+                    Ok(())
+                }
             })?;
         Ok(())
     }
@@ -441,13 +454,25 @@ impl<'a> Exporter<'a> {
     fn parse_and_export_obsidian_note(&self, src: &Path, dest: &Path) -> Result<Option<PathBuf>> {
         let mut context = Context::new(src.to_path_buf(), dest.to_path_buf());
 
-        let (frontmatter, mut markdown_events) = self.parse_obsidian_note(src, &context)?;
+        let (frontmatter, mut markdown_events, found_attachments) =
+            self.parse_obsidian_note(src, &context)?;
         context.frontmatter = frontmatter;
         for func in &self.postprocessors {
             match func(&mut context, &mut markdown_events) {
                 PostprocessorResult::StopHere => break,
                 PostprocessorResult::StopAndSkipNote => return Ok(None),
                 PostprocessorResult::Continue => (),
+            }
+        }
+
+        if self.linked_attachments_only {
+            for attachment in found_attachments {
+                let relative_path = attachment
+                    .strip_prefix(self.start_at.clone())
+                    .expect("file should always be nested under root")
+                    .to_path_buf();
+                let destination = &self.destination.join(relative_path);
+                self.export_note(&attachment, destination)?;
             }
         }
 
@@ -482,7 +507,7 @@ impl<'a> Exporter<'a> {
         &self,
         path: &Path,
         context: &Context,
-    ) -> Result<(Frontmatter, MarkdownEvents<'b>)> {
+    ) -> Result<(Frontmatter, MarkdownEvents<'b>, HashSet<PathBuf>)> {
         if context.note_depth() > NOTE_RECURSION_LIMIT {
             return Err(ExportError::RecursionLimitExceeded {
                 file_tree: context.file_tree(),
@@ -490,6 +515,12 @@ impl<'a> Exporter<'a> {
         }
         let content = fs::read_to_string(path).context(ReadSnafu { path })?;
         let mut frontmatter = String::new();
+
+        // If `linked_attachments_only` is enabled, this is used to keep track of which attachments
+        // have been linked to in this note or any embedded notes. Note that a file is only
+        // considered an attachment if it is not a markdown file. These can then be exported after
+        // the note is fully parsed and any postprocessing has been applied.
+        let mut found_attachments: HashSet<PathBuf> = HashSet::new();
 
         let parser_options = Options::ENABLE_TABLES
             | Options::ENABLE_FOOTNOTES
@@ -610,6 +641,7 @@ impl<'a> Exporter<'a> {
                                     ref_parser.ref_text.clone().as_ref()
                                 ),
                                 context,
+                                &mut found_attachments,
                             );
                             events.append(&mut elements);
                             buffer.clear();
@@ -618,7 +650,8 @@ impl<'a> Exporter<'a> {
                         Some(RefType::Embed) => {
                             let mut elements = self.embed_file(
                                 ref_parser.ref_text.clone().as_ref(),
-                                context
+                                context,
+                                &mut found_attachments,
                             )?;
                             events.append(&mut elements);
                             buffer.clear();
@@ -640,6 +673,7 @@ impl<'a> Exporter<'a> {
         Ok((
             frontmatter_from_str(&frontmatter).context(FrontMatterDecodeSnafu { path })?,
             events.into_iter().map(event_to_owned).collect(),
+            found_attachments,
         ))
     }
 
@@ -652,6 +686,7 @@ impl<'a> Exporter<'a> {
         &self,
         link_text: &'a str,
         context: &'a Context,
+        found_attachments: &mut HashSet<PathBuf>,
     ) -> Result<MarkdownEvents<'b>> {
         let note_ref = ObsidianNoteReference::from_str(link_text);
 
@@ -661,7 +696,7 @@ impl<'a> Exporter<'a> {
             // If we have None file it is either to a section or id within the same file and thus
             // the current embed logic will fail, recurssing until it reaches it's limit.
             // For now we just bail early.
-            None => return Ok(self.make_link_to_file(note_ref, context)),
+            None => return Ok(self.make_link_to_file(note_ref, context, found_attachments)),
         };
 
         if path.is_none() {
@@ -683,14 +718,16 @@ impl<'a> Exporter<'a> {
         if !self.process_embeds_recursively && context.file_tree().contains(path) {
             return Ok([
                 vec![Event::Text(CowStr::Borrowed("→ "))],
-                self.make_link_to_file(note_ref, &child_context),
+                self.make_link_to_file(note_ref, &child_context, found_attachments),
             ]
             .concat());
         }
 
         let events = match path.extension().unwrap_or(&no_ext).to_str() {
             Some("md") => {
-                let (frontmatter, mut events) = self.parse_obsidian_note(path, &child_context)?;
+                let (frontmatter, mut events, child_found_attachments) =
+                    self.parse_obsidian_note(path, &child_context)?;
+                found_attachments.extend(child_found_attachments);
                 child_context.frontmatter = frontmatter;
                 if let Some(section) = note_ref.section {
                     events = reduce_to_section(events, section);
@@ -709,7 +746,7 @@ impl<'a> Exporter<'a> {
                 events
             }
             Some("png" | "jpg" | "jpeg" | "gif" | "webp" | "svg") => {
-                self.make_link_to_file(note_ref, &child_context)
+                self.make_link_to_file(note_ref, &child_context, found_attachments)
                     .into_iter()
                     .map(|event| match event {
                         // make_link_to_file returns a link to a file. With this we turn the link
@@ -732,7 +769,7 @@ impl<'a> Exporter<'a> {
                     })
                     .collect()
             }
-            _ => self.make_link_to_file(note_ref, &child_context),
+            _ => self.make_link_to_file(note_ref, &child_context, found_attachments),
         };
         Ok(events)
     }
@@ -741,6 +778,7 @@ impl<'a> Exporter<'a> {
         &self,
         reference: ObsidianNoteReference<'_>,
         context: &Context,
+        found_attachments: &mut HashSet<PathBuf>,
     ) -> MarkdownEvents<'c> {
         let target_file = reference.file.map_or_else(
             || Some(context.current_file()),
@@ -763,6 +801,9 @@ impl<'a> Exporter<'a> {
             ];
         }
         let target_file = target_file.unwrap();
+        if self.linked_attachments_only && !is_markdown_file(target_file) {
+            found_attachments.insert(target_file.clone());
+        }
         // We use root_file() rather than current_file() here to make sure links are always
         // relative to the outer-most note, which is the note which this content is inserted into
         // in case of embedded notes.
