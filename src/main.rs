@@ -3,7 +3,12 @@ use std::path::PathBuf;
 
 use eyre::{eyre, Result};
 use gumdrop::Options;
-use obsidian_export::postprocessors::{filter_by_tags, softbreaks_to_hardbreaks};
+use obsidian_export::postprocessors::{
+    filter_by_tags,
+    remove_obsidian_comments,
+    softbreaks_to_hardbreaks,
+    CommentStrategy,
+};
 use obsidian_export::{ExportError, Exporter, FrontmatterStrategy, WalkOptions};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -70,6 +75,15 @@ struct Opts {
         default = "false"
     )]
     hard_linebreaks: bool,
+
+    #[options(
+        no_short,
+        help = "Comment strategy (one of: keep-unchanged or remove)",
+        long = "comments",
+        parse(try_from_str = "comment_strategy_from_str"),
+        default = "keep-unchanged"
+    )]
+    comment_strategy: CommentStrategy,
 }
 
 fn frontmatter_strategy_from_str(input: &str) -> Result<FrontmatterStrategy> {
@@ -78,6 +92,14 @@ fn frontmatter_strategy_from_str(input: &str) -> Result<FrontmatterStrategy> {
         "always" => Ok(FrontmatterStrategy::Always),
         "never" => Ok(FrontmatterStrategy::Never),
         _ => Err(eyre!("must be one of: always, never, auto")),
+    }
+}
+
+fn comment_strategy_from_str(input: &str) -> Result<CommentStrategy> {
+    match input {
+        "keep-unchanged" => Ok(CommentStrategy::KeepUnchanged),
+        "remove" => Ok(CommentStrategy::Remove),
+        _ => Err(eyre!("must be one of: keep-unchanged or remove")),
     }
 }
 
@@ -109,6 +131,10 @@ fn main() {
 
     if args.hard_linebreaks {
         exporter.add_postprocessor(&softbreaks_to_hardbreaks);
+    }
+
+    if matches!(args.comment_strategy, CommentStrategy::Remove) {
+        exporter.add_postprocessor(&remove_obsidian_comments);
     }
 
     let tags_postprocessor = filter_by_tags(args.skip_tags, args.only_tags);
