@@ -79,4 +79,9 @@ If you don't feel comfortable writing user documentation, I will be happy to gui
 ## Release notes
 
 [Towncrier](https://towncrier.readthedocs.io/en/stable/index.html) is used to generate release notes.
-If you add a changelog fragment to the `changelog.d` directory with `just add-changelog` (requires [just](https://github.com/casey/just#installation)) it will automatically be picked up when a new release is made.
+
+If you add a changelog fragment to the `changelog.d` directory with `just add-changelog`, it will automatically be picked up when a new release is made.
+
+This requires
+- [just](https://github.com/casey/just#installation)
+- [uv](https://github.com/astral-sh/uv)
