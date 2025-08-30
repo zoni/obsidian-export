@@ -17,13 +17,13 @@ pub use context::Context;
 use filetime::set_file_mtime;
 use frontmatter::{frontmatter_from_str, frontmatter_to_str};
 pub use frontmatter::{Frontmatter, FrontmatterStrategy};
+use github_slugger::slug;
 use pathdiff::diff_paths;
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use pulldown_cmark::{CodeBlockKind, CowStr, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 use pulldown_cmark_to_cmark::cmark_with_options;
 use rayon::prelude::*;
 use references::{ObsidianNoteReference, RefParser, RefParserState, RefType};
-use slug::slugify;
 use snafu::{ResultExt, Snafu};
 use unicode_normalization::UnicodeNormalization;
 pub use walker::{vault_contents, WalkOptions};
@@ -780,7 +780,7 @@ impl<'a> Exporter<'a> {
 
         if let Some(section) = reference.section {
             link.push('#');
-            link.push_str(&slugify(section));
+            link.push_str(&slug(section));
         }
 
         let link_tag = Tag::Link {

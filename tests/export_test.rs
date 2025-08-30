@@ -459,3 +459,26 @@ fn test_same_filename_different_directories() {
     let actual = read_to_string(tmp_dir.path().join(PathBuf::from("Note.md"))).unwrap();
     assert_eq!(expected, actual);
 }
+
+#[test]
+fn test_github_flavored_markdown_heading_id_compliance() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+
+    Exporter::new(
+        PathBuf::from("tests/testdata/input/gfm-heading-ids-compliance"),
+        tmp_dir.path().to_path_buf(),
+    )
+    .run()
+    .unwrap();
+
+    let expected = if cfg!(windows) {
+        read_to_string("tests/testdata/expected/gfm-heading-ids-compliance/Note.md")
+            .unwrap()
+            .replace('/', "\\")
+    } else {
+        read_to_string("tests/testdata/expected/gfm-heading-ids-compliance/Note.md").unwrap()
+    };
+
+    let actual = read_to_string(tmp_dir.path().join(PathBuf::from("Note.md"))).unwrap();
+    assert_eq!(expected, actual);
+}
