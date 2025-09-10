@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::fs::{read_to_string, remove_file};
+use std::fs::{read_to_string, remove_file, read};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -292,6 +292,7 @@ fn test_filter_by_tags() {
         vec!["export".into()],
     );
     exporter.add_postprocessor(&filter_by_tags);
+    exporter.linked_attachments_only(true);
     exporter.run().unwrap();
 
     let walker = WalkDir::new("tests/testdata/expected/filter-by-tags/")
@@ -305,13 +306,13 @@ fn test_filter_by_tags() {
             continue;
         }
         let filename = entry.file_name().to_string_lossy().into_owned();
-        let expected = read_to_string(entry.path()).unwrap_or_else(|_| {
+        let expected = read(entry.path()).unwrap_or_else(|_| {
             panic!(
                 "failed to read {} from testdata/expected/filter-by-tags",
                 entry.path().display()
             )
         });
-        let actual = read_to_string(tmp_dir.path().join(PathBuf::from(&filename)))
+        let actual = read(tmp_dir.path().join(PathBuf::from(&filename)))
             .unwrap_or_else(|_| panic!("failed to read {} from temporary exportdir", filename));
 
         assert_eq!(

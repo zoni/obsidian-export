@@ -5,3 +5,5 @@ tags:
 ---
 
 A public note
+
+![white.png](white.png)

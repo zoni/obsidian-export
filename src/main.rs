@@ -70,6 +70,13 @@ struct Opts {
         default = "false"
     )]
     hard_linebreaks: bool,
+
+    #[options(
+        no_short,
+        help = "Non-markdown files are only exported if they are linked or embedded in a note.",
+        default = "false"
+    )]
+    linked_attachments_only: bool,
 }
 
 fn frontmatter_strategy_from_str(input: &str) -> Result<FrontmatterStrategy> {
@@ -105,6 +112,7 @@ fn main() {
     exporter.frontmatter_strategy(args.frontmatter_strategy);
     exporter.process_embeds_recursively(!args.no_recursive_embeds);
     exporter.preserve_mtime(args.preserve_mtime);
+    exporter.linked_attachments_only(args.linked_attachments_only);
     exporter.walk_options(walk_options);
 
     if args.hard_linebreaks {
