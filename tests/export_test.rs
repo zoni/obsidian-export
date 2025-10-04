@@ -399,6 +399,25 @@ fn test_no_preserve_mtime() {
 }
 
 #[test]
+fn test_add_titles() {
+    let tmp_dir = TempDir::new().expect("failed to make tempdir");
+
+    let mut exporter = Exporter::new(
+        // Github bug #26 causes embeds not to work with single-file exports. As a workaround, we
+        // export a whole directory in this test.
+        PathBuf::from("tests/testdata/input/add-titles/"),
+        tmp_dir.path().to_path_buf(),
+    );
+    exporter.add_titles(true);
+    exporter.run().expect("exporter returned error");
+
+    assert_eq!(
+        read_to_string("tests/testdata/expected/add-titles/Main note.md").unwrap(),
+        read_to_string(tmp_dir.path().join(PathBuf::from("Main note.md"))).unwrap(),
+    );
+}
+
+#[test]
 fn test_non_ascii_filenames() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
 
