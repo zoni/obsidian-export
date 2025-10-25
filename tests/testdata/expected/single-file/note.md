@@ -1,3 +1,3 @@
-Link to *other-note*.
+Link to [other-note]().
 
-Link to *another note*.
+Link to [another note]().
