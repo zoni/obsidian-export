@@ -240,6 +240,30 @@ With these hooks in place, links to both notes as well as file attachments shoul
  > 
  > Note: If you're using a theme which comes with it's own render hooks, you might need to do a little extra work, or customize the snippets above, to avoid conflicts with the hooks from your theme.
 
+## Removing Obsidian comments
+
+To remove [Obsidian formatted comments](https://help.obsidian.md/Editing+and+formatting/Basic+formatting+syntax#Comments) you can set the `--remove-obsidian-comments` flag. This will remove inline as well as block comments but leave any comments found in codeblocks.
+
+````md
+This is not a comment.
+
+%% This is an inline comment %% This line could have more text.
+
+%%
+This would be a
+block comment and
+all of this would be removed
+%%
+````
+
+With the `--remove-obsidian-comments` flag. This file would output as
+
+````md
+This is not a comment
+
+This line could have more text.
+````
+
 
 # Library usage
 
