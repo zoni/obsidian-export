@@ -8,7 +8,7 @@ runs:
   using: "composite"
   steps:
     - name: Install cargo-binstall
-      uses: cargo-bins/cargo-binstall@main
+      uses: cargo-bins/cargo-binstall@422f3094be6a0843857aa008b499caaf6bce0da8 # main
 
     - name: Install cargo bins
       shell: bash
