@@ -353,6 +353,8 @@ impl<'a> Exporter<'a> {
     }
 
     /// Export notes using the settings configured on this exporter.
+    ///
+    /// The destination directory is created if it doesn't exist already.
     pub fn run(&mut self) -> Result<()> {
         if !self.root.exists() {
             return Err(ExportError::PathDoesNotExist {
@@ -377,26 +379,14 @@ impl<'a> Exporter<'a> {
 
             let destination = match self.destination.is_dir() {
                 true => self.destination.join(String::from(source_filename)),
-                false => {
-                    let parent = self.destination.parent().unwrap_or(&self.destination);
-                    // Avoid recursively creating self.destination through the call to
-                    // export_note when the parent directory doesn't exist.
-                    if !parent.exists() {
-                        return Err(ExportError::PathDoesNotExist {
-                            path: parent.to_path_buf(),
-                        });
-                    }
-                    self.destination.clone()
-                }
+                false => self.destination.clone(),
             };
             return self.export_note(&self.start_at, &destination);
         }
 
-        if !self.destination.exists() {
-            return Err(ExportError::PathDoesNotExist {
-                path: self.destination.clone(),
-            });
-        }
+        fs::create_dir_all(&self.destination).context(WriteSnafu {
+            path: &self.destination,
+        })?;
         self.vault_contents
             .as_ref()
             .unwrap()

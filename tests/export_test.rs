@@ -245,40 +245,41 @@ fn test_not_existing_source() {
 }
 
 #[test]
-fn test_not_existing_destination_with_source_dir() {
+fn test_nonexistent_destination_with_source_dir_is_created() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
+    let dest = tmp_dir.path().to_path_buf().join("subdir/does-not-exist");
 
-    let err = Exporter::new(
+    Exporter::new(
         PathBuf::from("tests/testdata/input/main-samples/"),
-        tmp_dir.path().to_path_buf().join("does-not-exist"),
+        dest.clone(),
     )
     .run()
-    .unwrap_err();
+    .expect("exporter returned error");
 
-    match err {
-        ExportError::PathDoesNotExist { .. } => {}
-        _ => panic!("Wrong error variant: {:?}", err),
-    }
+    assert_eq!(
+        read_to_string("tests/testdata/expected/main-samples/note-without-frontmatter.md").unwrap(),
+        read_to_string(dest.join("note-without-frontmatter.md")).unwrap(),
+    );
 }
 
 #[test]
-// This test ensures that when source is a file, but destination points to a
-// regular file inside of a non-existent directory, an error is raised instead
-// of that directory path being created (like `mkdir -p`)
-fn test_not_existing_destination_with_source_file() {
+// When the source is a file and destination points to a regular file inside a
+// non-existent directory, that directory is created (like `mkdir -p`)
+fn test_nonexistent_destination_with_source_file_is_created() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
+    let dest = tmp_dir.path().to_path_buf().join("subdir/does-not-exist");
 
-    let err = Exporter::new(
-        PathBuf::from("tests/testdata/input/main-samples/obsidian-wikilinks.md"),
-        tmp_dir.path().to_path_buf().join("subdir/does-not-exist"),
+    Exporter::new(
+        PathBuf::from("tests/testdata/input/single-file/note.md"),
+        dest.clone(),
     )
     .run()
-    .unwrap_err();
+    .expect("exporter returned error");
 
-    match err {
-        ExportError::PathDoesNotExist { .. } => {}
-        _ => panic!("Wrong error variant: {:?}", err),
-    }
+    assert_eq!(
+        read_to_string("tests/testdata/expected/single-file/note.md").unwrap(),
+        read_to_string(&dest).unwrap(),
+    );
 }
 
 #[cfg(not(target_os = "windows"))]

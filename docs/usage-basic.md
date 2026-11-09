@@ -20,7 +20,7 @@ obsidian-export /path/to/my-obsidian-vault /path/to/exported-notes/
 
 This will export all of the files from `my-obsidian-vault` to `exported-notes`, except for those listed in `.export-ignore` or `.gitignore`.
 
-> Note that the destination directory must exist, so you may need to create a new, empty directory first.
+> The destination directory is created automatically if it doesn't exist yet.
 >
 > If you give it an **existing** directory, files under that directory may get overwritten.
 
