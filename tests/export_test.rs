@@ -344,6 +344,31 @@ fn test_infinite_recursion() {
 }
 
 #[test]
+fn test_heading_embed_reports_render_error() {
+    let input = TempDir::new().expect("failed to make input tempdir");
+    let output = TempDir::new().expect("failed to make output tempdir");
+    let main = input.path().join("Main.md");
+    std::fs::write(&main, "# ![[Other]]\n").unwrap();
+    std::fs::write(input.path().join("Other.md"), "# Target\n\nA paragraph.\n").unwrap();
+
+    let mut exporter = Exporter::new(input.path().to_path_buf(), output.path().to_path_buf());
+    exporter.process_embeds_recursively(false);
+    match exporter.run().unwrap_err() {
+        ExportError::FileExportError { path, source } => {
+            assert_eq!(path, main);
+            assert!(matches!(
+                *source,
+                ExportError::MarkdownRenderError {
+                    source: pulldown_cmark_to_cmark::Error::UnexpectedEvent,
+                }
+            ));
+        }
+        err => panic!("Wrong error variant: {:?}", err),
+    }
+    assert!(!output.path().join("Main.md").exists());
+}
+
+#[test]
 fn test_no_recursive_embeds() {
     let tmp_dir = TempDir::new().expect("failed to make tempdir");
 

@@ -200,6 +200,12 @@ pub enum ExportError {
         source: Box<ExportError>,
     },
 
+    #[snafu(display("Failed to render Markdown events"))]
+    /// This occurs when the Markdown renderer rejects the events for a note.
+    MarkdownRenderError {
+        source: pulldown_cmark_to_cmark::Error,
+    },
+
     #[snafu(display("Failed to decode YAML frontmatter in '{}'", path.display()))]
     FrontMatterDecodeError {
         path: PathBuf,
@@ -451,6 +457,7 @@ impl<'a> Exporter<'a> {
             }
         }
 
+        let rendered = render_mdevents_to_mdtext(&markdown_events).context(MarkdownRenderSnafu)?;
         let mut outfile = create_file(&context.destination)?;
         let write_frontmatter = match self.frontmatter_strategy {
             FrontmatterStrategy::Always => true,
@@ -467,11 +474,9 @@ impl<'a> Exporter<'a> {
                     path: &context.destination,
                 })?;
         }
-        outfile
-            .write_all(render_mdevents_to_mdtext(&markdown_events).as_bytes())
-            .context(WriteSnafu {
-                path: &context.destination,
-            })?;
+        outfile.write_all(rendered.as_bytes()).context(WriteSnafu {
+            path: &context.destination,
+        })?;
         Ok(Some(context.destination))
     }
 
@@ -827,16 +832,17 @@ fn lookup_filename_in_vault<'a>(
     })
 }
 
-fn render_mdevents_to_mdtext(markdown: &MarkdownEvents<'_>) -> String {
+fn render_mdevents_to_mdtext(
+    markdown: &MarkdownEvents<'_>,
+) -> Result<String, pulldown_cmark_to_cmark::Error> {
     let mut buffer = String::new();
     cmark_with_options(
         markdown.iter(),
         &mut buffer,
         pulldown_cmark_to_cmark::Options::default(),
-    )
-    .expect("formatting to string not expected to fail");
+    )?;
     buffer.push('\n');
-    buffer
+    Ok(buffer)
 }
 
 fn create_file(dest: &Path) -> Result<File> {
